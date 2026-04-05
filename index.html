@@ -3307,10 +3307,11 @@ const Goalivo = (() => {
     if (!supa) return;
     try {
       const { data: { session } } = await supa.auth.getSession();
-      if (session) currentUser = session.user;
+      if (session) { currentUser = session.user; syncFromCloud(); }
 
       supa.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user || null;
+        if (currentUser) syncFromCloud();
         updateAuthUI();
       });
       updateAuthUI();
@@ -8994,6 +8995,72 @@ ${history}
   }
 
   // 전체 초기화
+    // ===== SUPABASE CLOUD SYNC =====
+  async function syncToCloud() {
+    if (!supa || !currentUser) return toast('클라우드 동기화: 로그인이 필요합니다', 'error');
+    const syncBtn = document.querySelector('.header-sync-btn svg');
+    if (syncBtn) syncBtn.style.stroke = 'var(--c-in-progress)';
+    try {
+      const data = {
+        goals: await db.goals.toArray(),
+        milestones: await db.milestones.toArray(),
+        timeBlocks: await db.timeBlocks.toArray(),
+        taskInstances: await db.taskInstances.toArray(),
+        executionLogs: await db.executionLogs.toArray(),
+        timeBlockTemplates: await db.timeBlockTemplates.toArray(),
+        settings: state.settings,
+        exportedAt: new Date().toISOString()
+      };
+      const { error } = await supa.from('user_state').upsert({
+        user_id: currentUser.id,
+        state_data: data
+      });
+      if (error) throw error;
+      toast('☁ 클라우드 버전에 저장되었습니다', 'success');
+    } catch (e) {
+      console.error(e);
+      toast('클라우드 저장 실패: ' + e.message, 'error');
+    } finally {
+      if (syncBtn) syncBtn.style.stroke = 'currentColor';
+    }
+  }
+
+  async function syncFromCloud() {
+    if (!supa || !currentUser) return;
+    const syncBtn = document.querySelector('.header-sync-btn svg');
+    if (syncBtn) syncBtn.style.stroke = 'var(--c-in-progress)';
+    try {
+      const { data, error } = await supa.from('user_state')
+        .select('state_data')
+        .eq('user_id', currentUser.id)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') throw error;
+      if (!data) return;
+
+      const cloudData = data.state_data;
+      if (cloudData.goals) { await db.goals.clear(); await db.goals.bulkAdd(cloudData.goals); }
+      if (cloudData.milestones) { await db.milestones.clear(); await db.milestones.bulkAdd(cloudData.milestones); }
+      if (cloudData.timeBlocks) { await db.timeBlocks.clear(); await db.timeBlocks.bulkAdd(cloudData.timeBlocks); }
+      if (cloudData.taskInstances) { await db.taskInstances.clear(); await db.taskInstances.bulkAdd(cloudData.taskInstances); }
+      if (cloudData.executionLogs) { await db.executionLogs.clear(); await db.executionLogs.bulkAdd(cloudData.executionLogs); }
+      if (cloudData.timeBlockTemplates && db.timeBlockTemplates) { await db.timeBlockTemplates.clear(); await db.timeBlockTemplates.bulkAdd(cloudData.timeBlockTemplates); }
+      if (cloudData.settings) {
+        Object.assign(state.settings, cloudData.settings);
+        localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+      }
+      
+      await loadGoals();
+      renderAll();
+      toast('☁ 다른 기기의 데이터를 불러왔습니다', 'success');
+    } catch (e) {
+      console.error(e);
+      toast('클라우드 불러오기 실패: ' + e.message, 'error');
+    } finally {
+      if (syncBtn) syncBtn.style.stroke = 'currentColor';
+    }
+  }
+
   async function clearAllData() {
     if (!confirm('모든 데이터가 삭제됩니다. 되돌릴 수 없습니다. 계속하시겠습니까?')) return;
     if (!confirm('정말로 삭제하시겠습니까? 마지막 확인입니다.')) return;
