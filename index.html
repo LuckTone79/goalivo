@@ -8582,13 +8582,13 @@ ${history}
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(AI err:  + (err.error || response.status));
+        throw new Error("AI err: " + (err.error || response.status));
       }
 
       const data = await response.json();
       return data.result;
     } catch (e) {
-      throw new Error(AI fail:  + e.message);
+      throw new Error("AI fail: " + e.message);
     }
   }
 
