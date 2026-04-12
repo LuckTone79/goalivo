@@ -3307,7 +3307,17 @@ const Goalivo = (() => {
     if (!supa) return;
     try {
       const { data: { session } } = await supa.auth.getSession();
-      if (session) { currentUser = session.user; syncFromCloud(); }
+      if (session) {
+      currentUser = session.user;
+      if (session.provider_token) {
+        state.settings.gcalToken = session.provider_token;
+        state.gcalConnected = true;
+        localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+      } else if (state.settings.gcalToken) {
+        state.gcalConnected = true; // Restore from localstorage
+      }
+      syncFromCloud();
+    }
 
       supa.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user || null;
@@ -4736,7 +4746,7 @@ const Goalivo = (() => {
       const goalId = await db.goals.add(data);
 
       // AI Planner: try AI first, fallback to manual
-      const hasAiKey = !!state.settings.aiApiKey;
+      const hasAiKey = true;
       const aiSectionOpen = !document.getElementById('aiPlanningSection')?.classList?.contains('hidden');
 
       if (hasAiKey && aiSectionOpen) {
