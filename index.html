@@ -7981,11 +7981,7 @@ const Goalivo = (() => {
   }
 
   async function syncGoogleCalendar() {
-    if (state.gcalConnected) {
-      await fetchGoogleEvents();
-    } else {
-      await initGoogleCalendar();
-    }
+    await fetchGoogleEvents();
   }
 
   /* ============================================================
