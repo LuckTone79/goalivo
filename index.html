@@ -8343,9 +8343,7 @@ const Goalivo = (() => {
     document.documentElement.setAttribute('data-skin', state.settings.skin);
   }
 
-  function connectGoogle() {
-    initGoogleCalendar();
-  }
+  function connectGoogle() { syncGoogleCalendar(); }
 
   // ===== Custom Category Management =====
   function addCustomCategory() {
