@@ -3321,6 +3321,14 @@ const Goalivo = (() => {
 
       supa.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user || null;
+        if (session?.provider_token) {
+          state.settings = state.settings || {};
+          state.settings.gcalToken = session.provider_token;
+          state.gcalConnected = true;
+          localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+        } else if (currentUser && state.settings && state.settings.gcalToken) {
+          state.gcalConnected = true;
+        }
         if (currentUser) syncFromCloud();
         updateAuthUI();
       });
@@ -3396,7 +3404,7 @@ const Goalivo = (() => {
     if (!supa) { toast('인증 서비스를 사용할 수 없습니다', 'error'); return; }
     const { error } = await supa.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + window.location.pathname }
+      options: { scopes: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events', redirectTo: window.location.origin + window.location.pathname }
     });
     if (error) toast('Google 로그인 실패: ' + error.message, 'error');
   }
@@ -7887,37 +7895,48 @@ const Goalivo = (() => {
   }
 
   async function fetchGoogleEvents() {
-    if (!state.gcalConnected) return;
+    if (!state.settings || !state.settings.gcalToken) {
+      toast('구글 캘린더 연동을 위해 우측 상단 메뉴에서 구글 계정으로 (재)로그인이 필요합니다', 'warning');
+      return;
+    }
 
     try {
-      // 읽기 전용 — 외부 일정 오버레이
       const now = new Date();
       const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
       const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
 
-      const response = await gapi.client.calendar.events.list({
-        calendarId: 'primary',
-        timeMin,
-        timeMax,
-        showDeleted: false,
-        singleEvents: true,
-        orderBy: 'startTime',
+      const apiUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`;
+      
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${state.settings.gcalToken}`,
+          'Accept': 'application/json'
+        }
       });
 
-      const events = response.result.items || [];
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+           state.settings.gcalToken = null;
+           state.gcalConnected = false;
+           localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+        }
+        throw new Error('Google API Failed: ' + response.status);
+      }
 
-      // 외부 이벤트 저장 (기존 데이터 삭제 후 갱신)
+      const responseData = await response.json();
+      const events = responseData.items || [];
+
       await db.externalEvents.clear();
 
       const externalEvents = events.map(e => ({
         calendarId: 'primary',
         eventId: e.id,
         summary: e.summary || '(제목 없음)',
-        start: e.start.dateTime || e.start.date,
-        end: e.end.dateTime || e.end.date,
-        startHour: e.start.dateTime ? new Date(e.start.dateTime).getHours() : 0,
+        start: e.start && e.start.dateTime ? e.start.dateTime : (e.start && e.start.date ? e.start.date : null),
+        end: e.end && e.end.dateTime ? e.end.dateTime : (e.end && e.end.date ? e.end.date : null),
+        startHour: e.start && e.start.dateTime ? new Date(e.start.dateTime).getHours() : 0,
         location: e.location || '',
-        isAllDay: !e.start.dateTime,
+        isAllDay: e.start && !e.start.dateTime,
         source: 'google',
         syncedAt: new Date().toISOString()
       }));
@@ -7926,10 +7945,10 @@ const Goalivo = (() => {
       state.externalEvents = externalEvents;
 
       renderAll();
-      toast(`${events.length}개의 Google 일정을 동기화했습니다`, 'success');
+      toast(`${events.length}개의 구글 일정을 성공적으로 불러왔습니다`, 'success');
     } catch (err) {
       console.error('Google Calendar fetch error:', err);
-      toast('Google 일정 가져오기 실패', 'error');
+      toast('구글 일정 가져오기 실패. 권한이 만료되었습니다. 구글로 재로그인 해주세요.', 'error');
     }
   }
 
