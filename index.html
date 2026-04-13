@@ -3912,6 +3912,7 @@
               state.settings.gcalToken = session.provider_token;
               state.gcalConnected = true;
               localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+              setTimeout(() => fetchGoogleEvents(), 1000);
             } else if (state.settings.gcalToken) {
               state.gcalConnected = true; // Restore from localstorage
             }
@@ -3925,6 +3926,7 @@
               state.settings.gcalToken = session.provider_token;
               state.gcalConnected = true;
               localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+              setTimeout(() => fetchGoogleEvents(), 1000);
             } else if (currentUser && state.settings && state.settings.gcalToken) {
               state.gcalConnected = true;
             }
