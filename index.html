@@ -3887,6 +3887,40 @@
 
       let supa = null;
       let currentUser = null;
+      const GCAL_TOKEN_STORAGE_KEY = 'goalivo_gcal_token';
+
+      function persistGcalToken(token) {
+        if (!state.settings) state.settings = {};
+        state.gcalToken = token || null;
+        state.gcalConnected = !!token;
+
+        if (token) state.settings.gcalToken = token;
+        else delete state.settings.gcalToken;
+
+        try {
+          if (token) localStorage.setItem(GCAL_TOKEN_STORAGE_KEY, token);
+          else localStorage.removeItem(GCAL_TOKEN_STORAGE_KEY);
+          localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+        } catch (e) {
+          console.warn('[Goalivo] Google token persistence failed:', e);
+        }
+      }
+
+      function restoreGcalToken() {
+        let token = state.gcalToken || (state.settings && state.settings.gcalToken) || null;
+        try {
+          token = token || localStorage.getItem(GCAL_TOKEN_STORAGE_KEY);
+        } catch (e) { }
+
+        if (token) persistGcalToken(token);
+        return token;
+      }
+
+      function getCloudSafeSettings() {
+        const settings = { ...(state.settings || {}) };
+        delete settings.gcalToken;
+        return settings;
+      }
 
       async function initAuth() {
         try {
@@ -3909,12 +3943,10 @@
           if (session) {
             currentUser = session.user;
             if (session.provider_token) {
-              state.settings.gcalToken = session.provider_token;
-              state.gcalConnected = true;
-              localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+              persistGcalToken(session.provider_token);
               setTimeout(() => fetchGoogleEvents(), 1000);
-            } else if (state.settings.gcalToken) {
-              state.gcalConnected = true; // Restore from localstorage
+            } else if (restoreGcalToken()) {
+              state.gcalConnected = true;
             }
             syncFromCloud();
           }
@@ -3922,12 +3954,9 @@
           supa.auth.onAuthStateChange((event, session) => {
             currentUser = session?.user || null;
             if (session?.provider_token) {
-              state.settings = state.settings || {};
-              state.settings.gcalToken = session.provider_token;
-              state.gcalConnected = true;
-              localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+              persistGcalToken(session.provider_token);
               setTimeout(() => fetchGoogleEvents(), 1000);
-            } else if (currentUser && state.settings && state.settings.gcalToken) {
+            } else if (currentUser && restoreGcalToken()) {
               state.gcalConnected = true;
             }
             if (currentUser) syncFromCloud();
@@ -4005,7 +4034,15 @@
         if (!supa) { toast('인증 서비스를 사용할 수 없습니다', 'error'); return; }
         const { error } = await supa.auth.signInWithOAuth({
           provider: 'google',
-          options: { scopes: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events', redirectTo: window.location.origin + window.location.pathname }
+          options: {
+            scopes: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+            queryParams: {
+              access_type: 'offline',
+              include_granted_scopes: 'true',
+              prompt: 'consent'
+            },
+            redirectTo: window.location.origin + window.location.pathname
+          }
         });
         if (error) toast('Google 로그인 실패: ' + error.message, 'error');
       }
@@ -4014,6 +4051,9 @@
         if (!supa) return;
         await supa.auth.signOut();
         currentUser = null;
+        persistGcalToken(null);
+        await db.externalEvents.clear();
+        state.externalEvents = [];
         toast('로그아웃 되었습니다', 'success');
         updateAuthUI();
       }
@@ -8479,8 +8519,7 @@
                 toast('Google 인증 실패', 'error');
                 return;
               }
-              state.gcalConnected = true;
-              state.gcalToken = response.access_token;
+              persistGcalToken(response.access_token);
               toast('✅ Google Calendar 연결됨', 'success');
               fetchGoogleEvents();
               // Re-render settings to update status
@@ -8495,10 +8534,15 @@
         }
       }
 
-      async function fetchGoogleEvents() {
-        if (!state.settings || !state.settings.gcalToken) {
-          toast('구글 캘린더 연동을 위해 구글 계정으로 로그인합니다...', 'info');
-          await loginWithGoogle();
+      async function fetchGoogleEvents(options = {}) {
+        const interactive = !!options.interactive;
+        const gcalToken = restoreGcalToken();
+
+        if (!gcalToken) {
+          if (interactive) {
+            toast('구글 캘린더 연동을 위해 구글 계정으로 로그인합니다...', 'info');
+            await loginWithGoogle();
+          }
           return;
         }
 
@@ -8511,16 +8555,22 @@
 
           const response = await fetch(apiUrl, {
             headers: {
-              'Authorization': `Bearer ${state.settings.gcalToken}`,
+              'Authorization': `Bearer ${gcalToken}`,
               'Accept': 'application/json'
             }
           });
 
           if (!response.ok) {
             if (response.status === 401 || response.status === 403) {
-              state.settings.gcalToken = null;
-              state.gcalConnected = false;
-              localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+              persistGcalToken(null);
+              await db.externalEvents.clear();
+              state.externalEvents = [];
+              renderAll();
+              if (interactive) {
+                toast('구글 권한이 만료되어 다시 연결합니다...', 'warning');
+                await loginWithGoogle();
+                return;
+              }
             }
             throw new Error('Google API Failed: ' + response.status);
           }
@@ -8603,8 +8653,12 @@
 
       async function syncGoogleCalendar() {
         if (!supa) { toast('인증 서비스를 사용할 수 없습니다', 'error'); return; }
-        if (!currentUser) { toast('먼저 로그인이 필요합니다', 'warning'); return; }
-        await fetchGoogleEvents();
+        if (!currentUser || !restoreGcalToken()) {
+          toast('구글 캘린더 연동을 위해 구글 계정으로 로그인합니다...', 'info');
+          await loginWithGoogle();
+          return;
+        }
+        await fetchGoogleEvents({ interactive: true });
       }
 
       /* ============================================================
@@ -8945,6 +8999,7 @@
         // Apply saved skin (default: aurora)
         if (!state.settings.skin) state.settings.skin = 'aurora';
         document.documentElement.setAttribute('data-skin', state.settings.skin);
+        restoreGcalToken();
       }
 
       function connectGoogle() { syncGoogleCalendar(); }
@@ -9579,7 +9634,7 @@ ${history}
           taskInstances: await db.taskInstances.toArray(),
           executionLogs: await db.executionLogs.toArray(),
           timeBlockTemplates: await db.timeBlockTemplates.toArray(),
-          settings: state.settings,
+          settings: getCloudSafeSettings(),
           exportedAt: new Date().toISOString()
         };
 
@@ -9608,7 +9663,9 @@ ${history}
           if (data.taskInstances) { await db.taskInstances.clear(); await db.taskInstances.bulkAdd(data.taskInstances); }
           if (data.executionLogs) { await db.executionLogs.clear(); await db.executionLogs.bulkAdd(data.executionLogs); }
           if (data.settings) {
-            Object.assign(state.settings, data.settings);
+            const importedSettings = { ...data.settings };
+            delete importedSettings.gcalToken;
+            Object.assign(state.settings, importedSettings);
             localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
           }
 
@@ -9635,7 +9692,7 @@ ${history}
             taskInstances: await db.taskInstances.toArray(),
             executionLogs: await db.executionLogs.toArray(),
             timeBlockTemplates: await db.timeBlockTemplates.toArray(),
-            settings: state.settings,
+            settings: getCloudSafeSettings(),
             exportedAt: new Date().toISOString()
           };
           const { error } = await supa.from('user_state').upsert({
@@ -9666,6 +9723,7 @@ ${history}
           if (!data) return;
 
           const cloudData = data.state_data;
+          const localGcalToken = restoreGcalToken();
           if (cloudData.goals) { await db.goals.clear(); await db.goals.bulkAdd(cloudData.goals); }
           if (cloudData.milestones) { await db.milestones.clear(); await db.milestones.bulkAdd(cloudData.milestones); }
           if (cloudData.timeBlocks) { await db.timeBlocks.clear(); await db.timeBlocks.bulkAdd(cloudData.timeBlocks); }
@@ -9673,8 +9731,11 @@ ${history}
           if (cloudData.executionLogs) { await db.executionLogs.clear(); await db.executionLogs.bulkAdd(cloudData.executionLogs); }
           if (cloudData.timeBlockTemplates && db.timeBlockTemplates) { await db.timeBlockTemplates.clear(); await db.timeBlockTemplates.bulkAdd(cloudData.timeBlockTemplates); }
           if (cloudData.settings) {
-            Object.assign(state.settings, cloudData.settings);
-            localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
+            const cloudSettings = { ...cloudData.settings };
+            delete cloudSettings.gcalToken;
+            Object.assign(state.settings, cloudSettings);
+            if (localGcalToken) persistGcalToken(localGcalToken);
+            else localStorage.setItem('goalivo_settings', JSON.stringify(state.settings));
           }
 
           await loadGoals();
@@ -10070,6 +10131,14 @@ ${history}
           console.error('[Goalivo] bindEvents error:', e);
         }
 
+        // 로컬 설정을 먼저 복원해야 Google OAuth 토큰을 Auth 초기화에서 놓치지 않는다.
+        try {
+          loadSettings();
+          console.log('[Goalivo] Settings loaded');
+        } catch (e) {
+          console.warn('[Goalivo] Settings load error:', e);
+        }
+
         // Supabase Auth 초기화
         try {
           await initAuth();
@@ -10079,7 +10148,6 @@ ${history}
         }
 
         try {
-          loadSettings();
           await loadGoals();
           state.externalEvents = await db.externalEvents.toArray();
           // Load AI Planner data
