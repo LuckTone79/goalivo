@@ -13056,12 +13056,18 @@ ${checkinLine}
         const language = String(locale?.appLanguage || '').toLowerCase();
         const haystack = [item.title, item.why, item.person_or_channel, item.tip, item.takeaway, item.language, item.country, item.platform].filter(Boolean).join(' ');
         const url = String(item.url || '').toLowerCase();
+        const itemLang = String(item.language || '').toLowerCase();
+        const itemCountry = String(item.country || '').toLowerCase();
         if (language === 'ko') {
+          if (itemLang.includes('한국') || itemLang.includes('korean') || itemLang.includes('ko')
+            || itemCountry.includes('한국') || itemCountry.includes('korea') || itemCountry.includes('kr')) return true;
           return /[가-힣]/.test(haystack)
-            || /(naver\.com|tistory\.com|brunch\.co\.kr|velog\.io|inflearn\.com|youtube\.com|youtu\.be)/.test(url);
+            || /(naver\.com|tistory\.com|brunch\.co\.kr|velog\.io|inflearn\.com|youtube\.com|youtu\.be|\.kr[/?#]|\.kr$)/.test(url);
         }
         if (language === 'ja') {
-          return /[\u3040-\u30ff\u3400-\u9fff]/.test(haystack)
+          if (itemLang.includes('日本') || itemLang.includes('japanese') || itemLang.includes('ja') || itemLang.includes('일본')
+            || itemCountry.includes('日本') || itemCountry.includes('japan') || itemCountry.includes('jp')) return true;
+          return /[぀-ヿ㐀-鿿]/.test(haystack)
             || /(note\.com|qiita\.com|zenn\.dev|ameblo\.jp|youtube\.com|youtu\.be|\.jp\/)/.test(url);
         }
         return true;
@@ -13069,19 +13075,13 @@ ${checkinLine}
 
       function isGoalRelevantReportLink(item, goal, profile, locale) {
         const tokens = tokenizeReportGoalText(goal, profile);
-        const relevance = String(item.relevance_reason || item.why || '').trim();
         const haystack = [
-          item.title,
-          item.why,
-          item.person_or_channel,
-          item.tip,
-          item.takeaway,
-          item.platform,
-          item.url,
-          relevance
+          item.title, item.why, item.person_or_channel,
+          item.tip, item.takeaway, item.platform, item.url,
+          item.relevance_reason, item.language, item.country
         ].filter(Boolean).join(' ').toLowerCase();
         const tokenHit = tokens.length === 0 || tokens.some(token => haystack.includes(token.toLowerCase()));
-        return tokenHit && relevance.length >= 8 && isLocaleFriendlyReportLink(item, locale);
+        return tokenHit && isLocaleFriendlyReportLink(item, locale);
       }
 
       function buildFallbackReport(goal, profile, domain, pack, context = {}) {
@@ -13160,7 +13160,7 @@ ${checkinLine}
           tips: asArray(item?.tips, fallback.level_fit_plan[idx % fallback.level_fit_plan.length].tips).slice(0, 5).map(t => String(t || '').trim()).filter(Boolean)
         })).filter(item => item.tips.length > 0);
 
-        const realPeopleTips = asArray(raw.real_people_tips, fallback.real_people_tips).slice(0, 6).map((item, idx) => {
+        let realPeopleTips = asArray(raw.real_people_tips, fallback.real_people_tips).slice(0, 6).map((item, idx) => {
           const fallbackItem = fallbackLinks[idx % Math.max(fallbackLinks.length, 1)] || {};
           const directUrl = normalizeDirectReportUrl(item?.url) || fallbackItem.url || '';
           return {
@@ -13175,8 +13175,24 @@ ${checkinLine}
             relevance_reason: String(item?.relevance_reason || item?.why || fallbackItem.relevance_reason || '').trim()
           };
         }).filter(item => item.url && isGoalRelevantReportLink(item, goal, profile, locale));
+        if (realPeopleTips.length === 0 && Array.isArray(raw.real_people_tips)) {
+          realPeopleTips = raw.real_people_tips
+            .filter(item => normalizeDirectReportUrl(item?.url))
+            .slice(0, 4)
+            .map(item => ({
+              source_type: String(item?.source_type || 'blog').trim(),
+              person_or_channel: String(item?.person_or_channel || '성공자 팁').trim(),
+              tip: String(item?.tip || '').trim(),
+              takeaway: String(item?.takeaway || '').trim(),
+              url: normalizeDirectReportUrl(item.url),
+              language: String(item?.language || locale.languageName || '').trim(),
+              country: String(item?.country || locale.countryName || '').trim(),
+              platform: String(item?.platform || '').trim(),
+              relevance_reason: String(item?.relevance_reason || item?.why || '').trim()
+            }));
+        }
 
-        const recommendedLinks = asArray(raw.recommended_links, fallback.recommended_links).slice(0, 8).map((item, idx) => {
+        let recommendedLinks = asArray(raw.recommended_links, fallback.recommended_links).slice(0, 8).map((item, idx) => {
           const fallbackItem = fallbackLinks[idx % Math.max(fallbackLinks.length, 1)] || {};
           const directUrl = normalizeDirectReportUrl(item?.url) || fallbackItem.url || '';
           return {
@@ -13190,6 +13206,21 @@ ${checkinLine}
             relevance_reason: String(item?.relevance_reason || item?.why || fallbackItem.relevance_reason || '').trim()
           };
         }).filter(item => item.url && isGoalRelevantReportLink(item, goal, profile, locale));
+        if (recommendedLinks.length === 0 && Array.isArray(raw.recommended_links)) {
+          recommendedLinks = raw.recommended_links
+            .filter(item => normalizeDirectReportUrl(item?.url))
+            .slice(0, 5)
+            .map(item => ({
+              title: String(item?.title || goal.name + ' 참고 링크').trim(),
+              type: String(item?.type || 'blog').trim(),
+              url: normalizeDirectReportUrl(item.url),
+              why: String(item?.why || '').trim(),
+              language: String(item?.language || locale.languageName || '').trim(),
+              country: String(item?.country || locale.countryName || '').trim(),
+              platform: String(item?.platform || item?.type || '').trim(),
+              relevance_reason: String(item?.relevance_reason || item?.why || '').trim()
+            }));
+        }
 
         return {
           report_summary: summary,
