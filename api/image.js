@@ -8,7 +8,7 @@ function toErrorMessage(error) {
   return error.message || JSON.stringify(error);
 }
 
-function isBillingOrModelError(error) {
+function isRetryableError(error) {
   const msg = toErrorMessage(error).toLowerCase();
   return msg.includes('billing')
     || msg.includes('hard limit')
@@ -20,7 +20,8 @@ function isBillingOrModelError(error) {
     || msg.includes('not found')
     || msg.includes('does not exist')
     || msg.includes('invalid model')
-    || msg.includes('unsupported');
+    || msg.includes('unsupported')
+    || msg.includes('unknown parameter');
 }
 
 function parseDataUrl(dataUrl = '') {
@@ -57,9 +58,10 @@ async function tryGenerate(openai, model, prompt, size, quality) {
     model,
     prompt,
     n: 1,
-    size: getValidSize(model, size),
-    response_format: 'b64_json'
+    size: getValidSize(model, size)
   };
+  // gpt-image-1 returns b64_json by default; dall-e models need it explicitly
+  if (model !== 'gpt-image-1') params.response_format = 'b64_json';
   const q = getValidQuality(model, quality);
   if (q) params.quality = q;
   return await openai.images.generate(params);
@@ -72,9 +74,9 @@ async function tryEditWithReference(openai, model, parsedReference, prompt, size
   const params = {
     model,
     prompt,
-    size: getValidSize(model, size),
-    response_format: 'b64_json'
+    size: getValidSize(model, size)
   };
+  if (model !== 'gpt-image-1') params.response_format = 'b64_json';
   const q = getValidQuality(model, quality);
   if (q) params.quality = q;
 
@@ -158,7 +160,7 @@ module.exports = async function handler(req, res) {
     } catch (err) {
       lastErr = err;
       console.error(`Image API [${model}] error:`, toErrorMessage(err));
-      if (!isBillingOrModelError(err)) break;
+      if (!isRetryableError(err)) break;
     }
   }
 
