@@ -1,11 +1,26 @@
 const { OpenAI, toFile } = require('openai');
 
-const DEFAULT_IMAGE_MODEL = 'gpt-image-1';
+const MODEL_CHAIN = ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
 
 function toErrorMessage(error) {
   if (!error) return 'Unknown image API error';
   if (typeof error === 'string') return error;
   return error.message || JSON.stringify(error);
+}
+
+function isBillingOrModelError(error) {
+  const msg = toErrorMessage(error).toLowerCase();
+  return msg.includes('billing')
+    || msg.includes('hard limit')
+    || msg.includes('quota')
+    || msg.includes('rate limit')
+    || msg.includes('insufficient')
+    || msg.includes('exceeded')
+    || msg.includes('not_found')
+    || msg.includes('not found')
+    || msg.includes('does not exist')
+    || msg.includes('invalid model')
+    || msg.includes('unsupported');
 }
 
 function parseDataUrl(dataUrl = '') {
@@ -16,6 +31,66 @@ function parseDataUrl(dataUrl = '') {
     mimeType: match[1],
     buffer: Buffer.from(match[2], 'base64')
   };
+}
+
+function getValidSize(model, requestedSize) {
+  if (model === 'dall-e-2') return '1024x1024';
+  if (model === 'dall-e-3') {
+    const allowed = ['1024x1024', '1792x1024', '1024x1792'];
+    return allowed.includes(requestedSize) ? requestedSize : '1024x1024';
+  }
+  return requestedSize || '1024x1024';
+}
+
+function getValidQuality(model, requestedQuality) {
+  if (model === 'dall-e-2') return undefined;
+  if (model === 'dall-e-3') return requestedQuality === 'hd' ? 'hd' : 'standard';
+  return requestedQuality || 'medium';
+}
+
+function supportsEdit(model) {
+  return model === 'gpt-image-1' || model === 'dall-e-2';
+}
+
+async function tryGenerate(openai, model, prompt, size, quality) {
+  const params = {
+    model,
+    prompt,
+    n: 1,
+    size: getValidSize(model, size),
+    response_format: 'b64_json'
+  };
+  const q = getValidQuality(model, quality);
+  if (q) params.quality = q;
+  return await openai.images.generate(params);
+}
+
+async function tryEditWithReference(openai, model, parsedReference, prompt, size, quality) {
+  const referenceFile = await toFile(parsedReference.buffer, 'vision-reference.png', {
+    type: parsedReference.mimeType || 'image/png'
+  });
+  const params = {
+    model,
+    prompt,
+    size: getValidSize(model, size),
+    response_format: 'b64_json'
+  };
+  const q = getValidQuality(model, quality);
+  if (q) params.quality = q;
+
+  if (model === 'gpt-image-1') {
+    params.image = [referenceFile];
+  } else {
+    params.image = referenceFile;
+  }
+  return await openai.images.edit(params);
+}
+
+function extractBase64(response) {
+  const item = response?.data?.[0];
+  if (!item) return null;
+  if (item.b64_json) return { base64: item.b64_json, revisedPrompt: item.revised_prompt || '' };
+  return null;
 }
 
 module.exports = async function handler(req, res) {
@@ -48,46 +123,50 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'prompt is required' });
   }
 
-  const model = process.env.OPENAI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const parsedReference = referenceImageDataUrl ? parseDataUrl(referenceImageDataUrl) : null;
+  const hasReference = !!parsedReference;
 
-  try {
-    const parsedReference = referenceImageDataUrl ? parseDataUrl(referenceImageDataUrl) : null;
-    let response;
+  const envModel = process.env.OPENAI_IMAGE_MODEL || '';
+  const candidates = envModel
+    ? [envModel, ...MODEL_CHAIN.filter(m => m !== envModel)]
+    : [...MODEL_CHAIN];
 
-    if (parsedReference) {
-      const referenceFile = await toFile(parsedReference.buffer, 'vision-reference.png', {
-        type: parsedReference.mimeType || 'image/png'
-      });
-      response = await openai.images.edit({
-        model,
-        image: [referenceFile],
-        prompt,
-        size,
-        quality
-      });
-    } else {
-      response = await openai.images.generate({
-        model,
-        prompt,
-        size,
-        quality
-      });
+  let lastErr = null;
+  let usedModel = '';
+
+  for (const model of candidates) {
+    try {
+      let response;
+
+      if (hasReference && supportsEdit(model)) {
+        response = await tryEditWithReference(openai, model, parsedReference, prompt, size, quality);
+      } else {
+        response = await tryGenerate(openai, model, prompt, size, quality);
+      }
+
+      const result = extractBase64(response);
+      if (result) {
+        usedModel = model;
+        return res.status(200).json({
+          dataUrl: `data:image/png;base64,${result.base64}`,
+          revisedPrompt: result.revisedPrompt,
+          model: usedModel,
+          referenceUsed: hasReference && supportsEdit(model)
+        });
+      }
+    } catch (err) {
+      lastErr = err;
+      console.error(`Image API [${model}] error:`, toErrorMessage(err));
+      if (!isBillingOrModelError(err)) break;
     }
-
-    const imageBase64 = response?.data?.[0]?.b64_json;
-    if (!imageBase64) {
-      return res.status(500).json({ error: 'Image API returned no image payload' });
-    }
-
-    return res.status(200).json({
-      dataUrl: `data:image/png;base64,${imageBase64}`,
-      revisedPrompt: response?.data?.[0]?.revised_prompt || '',
-      model
-    });
-  } catch (error) {
-    const message = toErrorMessage(error);
-    console.error('Image API Error:', message);
-    return res.status(500).json({ error: message });
   }
+
+  const message = toErrorMessage(lastErr);
+  const isBilling = message.toLowerCase().includes('billing') || message.toLowerCase().includes('limit');
+  return res.status(isBilling ? 402 : 500).json({
+    error: isBilling
+      ? 'OpenAI API 결제 한도에 도달했습니다. OpenAI 대시보드에서 결제 한도를 확인해주세요.'
+      : message
+  });
 };

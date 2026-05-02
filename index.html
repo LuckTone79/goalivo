@@ -10383,7 +10383,11 @@
           toast(state.visionImageGen.referenceDataUrl ? '참조 이미지를 바탕으로 새 이미지를 만들었습니다.' : 'AI 이미지가 생성되었습니다.', 'success');
         } catch (e) {
           console.error('[Goalivo Vision] image generation failed:', e);
-          state.visionImageGen.error = e.message || '이미지 생성에 실패했습니다.';
+          const errMsg = e.message || '이미지 생성에 실패했습니다.';
+          const isBilling = errMsg.includes('결제') || errMsg.includes('billing') || errMsg.includes('limit');
+          state.visionImageGen.error = isBilling
+            ? 'OpenAI API 결제 한도 초과입니다. platform.openai.com → Billing에서 한도를 높여주세요.'
+            : errMsg;
           toast(`이미지 생성 실패: ${state.visionImageGen.error}`, 'error');
         } finally {
           if (requestId === visionAiRequestSeq) {
