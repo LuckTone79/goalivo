@@ -1,6 +1,21 @@
 const { OpenAI, toFile } = require('openai');
 
-const MODEL_CHAIN = ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
+// gpt-image-2 = newest recommended; dall-e models = legacy fallback
+const MODEL_CHAIN = [
+  'gpt-image-2',
+  'gpt-image-1.5',
+  'chatgpt-image-latest',
+  'gpt-image-1',
+  'gpt-image-1-mini',
+  'dall-e-3',
+  'dall-e-2'
+];
+
+// GPT Image series: no response_format param, returns b64_json by default
+const GPT_IMAGE_SERIES = new Set([
+  'gpt-image-2', 'gpt-image-1.5', 'chatgpt-image-latest',
+  'gpt-image-1', 'gpt-image-1-mini'
+]);
 
 function toErrorMessage(error) {
   if (!error) return 'Unknown image API error';
@@ -46,11 +61,16 @@ function getValidSize(model, requestedSize) {
 function getValidQuality(model, requestedQuality) {
   if (model === 'dall-e-2') return undefined;
   if (model === 'dall-e-3') return requestedQuality === 'hd' ? 'hd' : 'standard';
+  if (GPT_IMAGE_SERIES.has(model)) return requestedQuality || 'medium';
   return requestedQuality || 'medium';
 }
 
 function supportsEdit(model) {
-  return model === 'gpt-image-1' || model === 'dall-e-2';
+  return GPT_IMAGE_SERIES.has(model) || model === 'dall-e-2';
+}
+
+function needsResponseFormat(model) {
+  return !GPT_IMAGE_SERIES.has(model);
 }
 
 async function tryGenerate(openai, model, prompt, size, quality) {
@@ -60,8 +80,7 @@ async function tryGenerate(openai, model, prompt, size, quality) {
     n: 1,
     size: getValidSize(model, size)
   };
-  // gpt-image-1 returns b64_json by default; dall-e models need it explicitly
-  if (model !== 'gpt-image-1') params.response_format = 'b64_json';
+  if (needsResponseFormat(model)) params.response_format = 'b64_json';
   const q = getValidQuality(model, quality);
   if (q) params.quality = q;
   return await openai.images.generate(params);
@@ -76,7 +95,7 @@ async function tryEditWithReference(openai, model, parsedReference, prompt, size
     prompt,
     size: getValidSize(model, size)
   };
-  if (model !== 'gpt-image-1') params.response_format = 'b64_json';
+  if (needsResponseFormat(model)) params.response_format = 'b64_json';
   const q = getValidQuality(model, quality);
   if (q) params.quality = q;
 
