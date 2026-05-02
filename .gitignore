@@ -1,0 +1,16 @@
+node_modules/
+package-lock.json
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.vscode/
+.idea/
+dist/
+build/
+.vercel/
+patch*.js
+diff.txt
+feedback.html
+supabase-feedback.sql

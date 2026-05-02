@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Goalivo logo</title>
+  <desc id="desc">Blue rounded square with a stylized G and calendar check.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#bg)"/>
+  <path d="M128 56c-38.66 0-70 31.34-70 70s31.34 70 70 70c24.13 0 45.41-12.21 57.98-30.78l-24.26-13.32C154.17 162.22 141.94 170 128 170c-24.3 0-44-19.7-44-44s19.7-44 44-44c15.87 0 29.77 8.4 37.49 21H126v24h72c.66-31.47-16.77-57.4-43.41-67.64A69.8 69.8 0 0 0 128 56Z" fill="url(#accent)"/>
+  <rect x="138" y="124" width="58" height="52" rx="14" fill="#eff6ff"/>
+  <path d="m151.5 151.5 10 10 21-23" fill="none" stroke="#2563eb" stroke-linecap="round" stroke-linejoin="round" stroke-width="10"/>
+</svg>
