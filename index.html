@@ -10254,29 +10254,49 @@
         openModal('visionImageGenModal');
       }
 
-      function addVisionImages() {
+      async function compressImageForVisionBoard(file) {
+        const dataUrl = await loadImageFileAsDataUrl(file);
+        const img = await new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = dataUrl;
+        });
+        const maxSide = 1200;
+        const ratio = Math.min(1, maxSide / Math.max(img.width, img.height, 1));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * ratio));
+        canvas.height = Math.max(1, Math.round(img.height * ratio));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.82);
+      }
+
+      async function addVisionImages() {
         const input = document.getElementById('visionImageInput');
         const files = [...(input?.files || [])];
         if (files.length === 0) { toast('이미지 파일을 선택하세요.', 'warning'); return; }
-        const jobs = files.slice(0, 12).map(file => new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve({
-            id: U.uid(),
-            title: (file.name || '').replace(/\.[^.]+$/, '') || '새 이미지',
-            dataUrl: String(reader.result || ''),
-            createdAt: new Date().toISOString()
+        toast('이미지를 처리 중입니다...', 'info');
+        try {
+          const jobs = files.slice(0, 12).map(async file => {
+            const dataUrl = await compressImageForVisionBoard(file);
+            return {
+              id: U.uid(),
+              title: (file.name || '').replace(/\.[^.]+$/, '') || '새 이미지',
+              dataUrl,
+              createdAt: new Date().toISOString()
+            };
           });
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        }));
-        Promise.all(jobs).then((results) => {
+          const results = await Promise.all(jobs);
           const images = Array.isArray(state.settings.visionImages) ? state.settings.visionImages : [];
           images.push(...results.filter(Boolean));
           state.settings.visionImages = images;
-          persistSettingsAndSync();
+          await persistSettingsAndSync();
           toast('이미지를 추가했습니다.', 'success');
           openVisionBoardModal('images');
-        }).catch(() => toast('이미지 추가 중 오류가 발생했습니다.', 'error'));
+        } catch (e) {
+          console.error('[addVisionImages] error:', e);
+          toast(`이미지 추가 실패: ${e?.message || '알 수 없는 오류'}`, 'error');
+        }
       }
 
       async function loadImageFileAsDataUrl(file) {
