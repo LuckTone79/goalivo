@@ -5356,13 +5356,16 @@
               placeholder="이름 입력 (선택사항)"
               maxlength="20"
               style="flex:1;min-width:0;font-size:11px;border:1px solid var(--c-border);border-radius:6px;padding:3px 8px;background:var(--c-surface-2);color:var(--c-text);"
-              onblur="Goalivo.saveColorLabel(${U.jsArg(selectedColor)}, this.value)">
+              onkeydown="if(event.key==='Enter'){event.preventDefault();Goalivo.saveColorLabel(${U.jsArg(selectedColor)}, this.value, true);}">
+            <button type="button"
+              style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--c-accent);background:var(--c-accent);color:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;"
+              onclick="Goalivo.saveColorLabel(${U.jsArg(selectedColor)}, document.getElementById('colorLabelInput_${safeColorId}')?.value ?? '', true)">적용</button>
           </div>` : '';
 
         return `<div class="detail-color-palette">${chips}</div>${labelInput}`;
       }
 
-      function saveColorLabel(color, label) {
+      function saveColorLabel(color, label, showFeedback = false) {
         if (!color) return;
         if (!state.settings.colorCategoryLabels) state.settings.colorCategoryLabels = {};
         const trimmed = String(label || '').trim();
@@ -5372,6 +5375,29 @@
           delete state.settings.colorCategoryLabels[color];
         }
         persistSettingsAndSync();
+        if (showFeedback) {
+          toast(trimmed ? `"${trimmed}" 카테고리 이름이 저장되었습니다.` : '카테고리 이름이 삭제되었습니다.', 'success');
+          // 칩 라벨 즉시 업데이트 (re-render 없이)
+          document.querySelectorAll('.detail-color-chip-wrap').forEach(wrap => {
+            const btn = wrap.querySelector('.detail-color-btn');
+            if (!btn) return;
+            const bg = btn.style.background;
+            const entry = SCHEDULE_COLOR_PALETTE.find(e => e.color === bg);
+            if (!entry || entry.color !== color) return;
+            let labelEl = wrap.querySelector('.detail-color-chip-label');
+            if (trimmed) {
+              if (!labelEl) {
+                labelEl = document.createElement('span');
+                labelEl.className = 'detail-color-chip-label';
+                wrap.appendChild(labelEl);
+              }
+              labelEl.textContent = trimmed;
+              labelEl.title = trimmed;
+            } else if (labelEl) {
+              labelEl.remove();
+            }
+          });
+        }
       }
 
       function setScheduleColor(kind, id, eventStart = '', color = '') {
