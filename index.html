@@ -1758,6 +1758,33 @@
       margin-top: 6px;
     }
 
+    .detail-color-chip-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      max-width: 40px;
+    }
+
+    .detail-color-chip-label {
+      font-size: 9px;
+      color: var(--c-text-muted);
+      max-width: 40px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .detail-color-label-input {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
     .detail-color-btn {
       width: 24px;
       height: 24px;
@@ -1765,6 +1792,7 @@
       border: 1px solid var(--c-border);
       cursor: pointer;
       padding: 0;
+      flex-shrink: 0;
     }
 
     .detail-color-btn.active {
@@ -5305,13 +5333,45 @@
       }
 
       function renderScheduleColorPicker(kind, id, eventStart, selectedColor) {
+        const labels = state.settings.colorCategoryLabels || {};
         const chips = SCHEDULE_COLOR_PALETTE.map(entry => {
           const color = entry.color;
           const active = selectedColor === color ? 'active' : '';
+          const userLabel = labels[color] || '';
+          const tooltip = userLabel || entry.name;
           const onclick = `Goalivo.setScheduleColor(${U.jsArg(kind)}, ${U.jsArg(id)}, ${U.jsArg(eventStart || '')}, ${U.jsArg(color)})`;
-          return `<button class="detail-color-btn ${active}" type="button" style="background:${color};" onclick="${onclick}" title="${entry.name}" aria-label="색상 ${entry.name}"></button>`;
+          return `<div class="detail-color-chip-wrap">
+            <button class="detail-color-btn ${active}" type="button" style="background:${color};" onclick="${onclick}" title="${U.esc(tooltip)}" aria-label="색상 ${U.esc(tooltip)}"></button>
+            ${userLabel ? `<span class="detail-color-chip-label" title="${U.esc(userLabel)}">${U.esc(userLabel)}</span>` : ''}
+          </div>`;
         }).join('');
-        return `<div class="detail-color-palette">${chips}</div>`;
+
+        const selectedUserLabel = selectedColor ? (labels[selectedColor] || '') : '';
+        const safeColorId = selectedColor ? selectedColor.replace('#', '') : '';
+        const labelInput = selectedColor ? `
+          <div class="detail-color-label-input">
+            <span style="font-size:11px;color:var(--c-text-muted);white-space:nowrap;">카테고리 이름:</span>
+            <input type="text" id="colorLabelInput_${safeColorId}"
+              value="${U.esc(selectedUserLabel)}"
+              placeholder="이름 입력 (선택사항)"
+              maxlength="20"
+              style="flex:1;min-width:0;font-size:11px;border:1px solid var(--c-border);border-radius:6px;padding:3px 8px;background:var(--c-surface-2);color:var(--c-text);"
+              onblur="Goalivo.saveColorLabel(${U.jsArg(selectedColor)}, this.value)">
+          </div>` : '';
+
+        return `<div class="detail-color-palette">${chips}</div>${labelInput}`;
+      }
+
+      function saveColorLabel(color, label) {
+        if (!color) return;
+        if (!state.settings.colorCategoryLabels) state.settings.colorCategoryLabels = {};
+        const trimmed = String(label || '').trim();
+        if (trimmed) {
+          state.settings.colorCategoryLabels[color] = trimmed;
+        } else {
+          delete state.settings.colorCategoryLabels[color];
+        }
+        persistSettingsAndSync();
       }
 
       function setScheduleColor(kind, id, eventStart = '', color = '') {
@@ -14430,6 +14490,7 @@ ${checkinLine}
         openExternalEventModal,
         deleteExternalEvent,
         setScheduleColor,
+        saveColorLabel,
         saveBlock,
         deleteBlock,
         quickAddBlock,
