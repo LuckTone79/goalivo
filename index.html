@@ -5071,7 +5071,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.05.13-01';
+      const APP_VERSION = 'v2026.05.13-02';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -6766,6 +6766,7 @@
         state.timeBlocks = await db.timeBlocks.toArray();
         state.taskInstances = await db.taskInstances.toArray();
         await reconcileLegacyTaskInstances();
+        await migrateGoalMemoItems();
         state.executionLogs = await db.executionLogs.toArray();
         // AI report data
         state.goalProfiles = await db.goalProfiles.toArray();
@@ -6773,6 +6774,49 @@
         state.planVersions = await db.planVersions.toArray();
         state.weeklyObjectives = await db.weeklyObjectives.toArray();
         state.reviewCheckpoints = await db.reviewCheckpoints.toArray();
+      }
+
+      async function migrateGoalMemoItems() {
+        const updates = [];
+        for (const goal of state.goals) {
+          if (Array.isArray(goal.memoItems)) continue;
+          const legacyMemo = String(goal.memo || '').trim();
+          if (!legacyMemo) continue;
+          updates.push({
+            id: goal.id,
+            memo: '',
+            memoItems: [{
+              id: `memo_${Date.now()}_${goal.id}`,
+              text: legacyMemo,
+              done: false,
+              createdAt: goal.updatedAt || goal.createdAt || new Date().toISOString()
+            }],
+            updatedAt: new Date().toISOString()
+          });
+        }
+        for (const row of updates) {
+          await db.goals.update(row.id, {
+            memo: row.memo,
+            memoItems: row.memoItems,
+            updatedAt: row.updatedAt
+          });
+        }
+        if (updates.length > 0) {
+          state.goals = await db.goals.toArray();
+        }
+      }
+
+      function getGoalMemoItems(goal) {
+        if (!goal) return [];
+        if (Array.isArray(goal.memoItems)) return goal.memoItems;
+        const legacyMemo = String(goal.memo || '').trim();
+        if (!legacyMemo) return [];
+        return [{
+          id: `legacy_${goal.id}`,
+          text: legacyMemo,
+          done: false,
+          createdAt: goal.updatedAt || goal.createdAt || new Date().toISOString()
+        }];
       }
 
       function inferMilestoneForTask(task) {
@@ -6979,6 +7023,7 @@
           name,
           description: document.getElementById('goalDesc').value.trim(),
           memo: document.getElementById('goalMemo').value.trim(),
+          memoItems: [],
           category: document.getElementById('goalCategory').value,
           startDate,
           targetDate,
@@ -6996,6 +7041,21 @@
         const aiSectionOpen = !document.getElementById('aiPlanningSection')?.classList?.contains('hidden');
         const shouldAutoGenerateMilestones = document.getElementById('goalAutoMilestonesCheck')?.classList?.contains('checked');
         if (editId) {
+          const existingGoal = state.goals.find(g => g.id === Number(editId));
+          if (existingGoal) {
+            const existingItems = getGoalMemoItems(existingGoal);
+            const modalMemo = String(data.memo || '').trim();
+            data.memoItems = [...existingItems];
+            if (modalMemo) {
+              data.memoItems.unshift({
+                id: `memo_${Date.now()}_${existingGoal.id}`,
+                text: modalMemo,
+                done: false,
+                createdAt: new Date().toISOString()
+              });
+            }
+            data.memo = '';
+          }
           await db.goals.update(Number(editId), data);
           if (aiSectionOpen) {
             await generateAiReport(Number(editId), { ...data, id: Number(editId) }, { reportType: 'profile_refresh' });
@@ -7004,6 +7064,16 @@
         } else {
           data.createdAt = new Date().toISOString();
           data.userId = 1;
+          const firstMemo = String(data.memo || '').trim();
+          if (firstMemo) {
+            data.memoItems = [{
+              id: `memo_${Date.now()}_new`,
+              text: firstMemo,
+              done: false,
+              createdAt: new Date().toISOString()
+            }];
+            data.memo = '';
+          }
           const goalId = await db.goals.add(data);
 
           // Milestone/task auto-generation runs only when user opts in.
@@ -7027,17 +7097,60 @@
         renderAll();
       }
 
-      async function saveGoalMemo(goalId) {
-        const input = document.getElementById(`goalMemoQuick_${goalId}`);
+      async function addGoalMemoItem(goalId) {
+        const input = document.getElementById(`goalMemoInput_${goalId}`);
         if (!input) return;
-        const memo = String(input.value || '').trim();
+        const text = String(input.value || '').trim();
+        if (!text) {
+          toast('메모 내용을 입력하세요', 'warning');
+          return;
+        }
+        const goal = state.goals.find(g => g.id === Number(goalId));
+        if (!goal) return;
+        const memoItems = getGoalMemoItems(goal);
+        memoItems.unshift({
+          id: `memo_${Date.now()}_${goalId}`,
+          text,
+          done: false,
+          createdAt: new Date().toISOString()
+        });
         await db.goals.update(Number(goalId), {
-          memo,
+          memo: '',
+          memoItems,
           updatedAt: new Date().toISOString()
         });
         await loadGoals();
         if (state.selectedGoalId === Number(goalId)) showGoalDetail(Number(goalId));
-        toast('목표 메모가 저장되었습니다', 'success');
+        toast('메모가 추가되었습니다', 'success');
+      }
+
+      async function toggleGoalMemoItem(goalId, memoId) {
+        const goal = state.goals.find(g => g.id === Number(goalId));
+        if (!goal) return;
+        const memoItems = getGoalMemoItems(goal).map(item => ({ ...item }));
+        const target = memoItems.find(item => item.id === memoId);
+        if (!target) return;
+        target.done = !target.done;
+        target.updatedAt = new Date().toISOString();
+        await db.goals.update(Number(goalId), {
+          memoItems,
+          updatedAt: new Date().toISOString()
+        });
+        await loadGoals();
+        if (state.selectedGoalId === Number(goalId)) showGoalDetail(Number(goalId));
+      }
+
+      async function deleteGoalMemoItem(goalId, memoId) {
+        const goal = state.goals.find(g => g.id === Number(goalId));
+        if (!goal) return;
+        const memoItems = getGoalMemoItems(goal).filter(item => item.id !== memoId);
+        await db.goals.update(Number(goalId), {
+          memoItems,
+          updatedAt: new Date().toISOString()
+        });
+        await loadGoals();
+        if (state.selectedGoalId === Number(goalId)) showGoalDetail(Number(goalId));
+        toast('메모가 삭제되었습니다', 'success');
       }
 
       async function deleteGoal(goalId) {
@@ -7928,12 +8041,25 @@
         <button class="btn btn-sm btn-danger" onclick="Goalivo.deleteGoal(${g.id})">삭제</button>
       </div>`;
 
+        const memoItems = getGoalMemoItems(g);
         html += `<div class="card" style="margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
           <div style="font-size:var(--fs-sm);font-weight:600;">목표 메모</div>
-          <button class="btn btn-xs btn-primary" onclick="Goalivo.saveGoalMemo(${g.id})">메모 저장</button>
+          <span style="font-size:11px;color:var(--c-text-muted);">${memoItems.length}개</span>
         </div>
-        <textarea id="goalMemoQuick_${g.id}" class="form-textarea" style="min-height:82px;" placeholder="목표 관련 아이디어, 참고 링크, 다음 액션을 기록하세요.">${U.esc(g.memo || '')}</textarea>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+          <input id="goalMemoInput_${g.id}" class="form-input" style="height:34px;font-size:12px;" placeholder="메모 추가 (아이디어/참고사항/다음 액션)">
+          <button class="btn btn-xs btn-primary" onclick="Goalivo.addGoalMemoItem(${g.id})">추가</button>
+        </div>
+        <div style="display:grid;gap:6px;">
+          ${memoItems.length === 0 ? `<div style="font-size:11px;color:var(--c-text-muted);padding:4px 0;">메모가 없습니다.</div>` : memoItems.map(item => `
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--c-border);border-radius:8px;background:var(--c-surface-2);">
+              <button class="btn btn-xs ${item.done ? 'btn-primary' : 'btn-secondary'}" style="padding:2px 7px;font-size:10px;" onclick="Goalivo.toggleGoalMemoItem(${g.id}, ${U.jsArg(item.id)})">${item.done ? '완료' : '진행'}</button>
+              <div style="flex:1;min-width:0;font-size:12px;${item.done ? 'text-decoration:line-through;color:var(--c-text-muted);' : ''}">${U.esc(item.text || '')}</div>
+              <button class="btn btn-xs btn-danger" style="padding:2px 7px;font-size:10px;" onclick="Goalivo.deleteGoalMemoItem(${g.id}, ${U.jsArg(item.id)})">삭제</button>
+            </div>
+          `).join('')}
+        </div>
       </div>`;
 
         // AI Report Summary
@@ -15756,7 +15882,9 @@ ${checkinLine}
         navigate,
         openGoalModal,
         saveGoal,
-        saveGoalMemo,
+        addGoalMemoItem,
+        toggleGoalMemoItem,
+        deleteGoalMemoItem,
         deleteGoal,
         selectGoal,
         renderRoutinePage,
