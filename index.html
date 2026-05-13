@@ -3779,6 +3779,10 @@
           <textarea class="form-textarea" id="goalDesc" placeholder="목표에 대한 상세 설명"></textarea>
         </div>
         <div class="form-group">
+          <label class="form-label">목표 메모</label>
+          <textarea class="form-textarea" id="goalMemo" placeholder="아이디어, 참고할 링크/자료, 다음 액션을 자유롭게 기록"></textarea>
+        </div>
+        <div class="form-group">
           <label class="form-label">카테고리</label>
           <select class="form-select" id="goalCategory">
             <option value="study">학습</option>
@@ -5067,7 +5071,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.05.11-01';
+      const APP_VERSION = 'v2026.05.13-01';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -6860,6 +6864,7 @@
           document.getElementById('goalEditId').value = g.id;
           document.getElementById('goalName').value = g.name;
           document.getElementById('goalDesc').value = g.description || '';
+          document.getElementById('goalMemo').value = g.memo || '';
           document.getElementById('goalCategory').value = g.category || 'study';
           document.getElementById('goalStartDate').value = g.startDate || '';
           document.getElementById('goalTargetDate').value = g.targetDate || '';
@@ -6898,6 +6903,7 @@
           document.getElementById('goalEditId').value = '';
           document.getElementById('goalName').value = '';
           document.getElementById('goalDesc').value = '';
+          document.getElementById('goalMemo').value = '';
           document.getElementById('goalCategory').value = 'study';
           document.getElementById('goalStartDate').value = U.formatDate(new Date());
           document.getElementById('goalTargetDate').value = '';
@@ -6972,6 +6978,7 @@
         const data = {
           name,
           description: document.getElementById('goalDesc').value.trim(),
+          memo: document.getElementById('goalMemo').value.trim(),
           category: document.getElementById('goalCategory').value,
           startDate,
           targetDate,
@@ -7018,6 +7025,19 @@
         closeModal('goalModal');
         await loadGoals();
         renderAll();
+      }
+
+      async function saveGoalMemo(goalId) {
+        const input = document.getElementById(`goalMemoQuick_${goalId}`);
+        if (!input) return;
+        const memo = String(input.value || '').trim();
+        await db.goals.update(Number(goalId), {
+          memo,
+          updatedAt: new Date().toISOString()
+        });
+        await loadGoals();
+        if (state.selectedGoalId === Number(goalId)) showGoalDetail(Number(goalId));
+        toast('목표 메모가 저장되었습니다', 'success');
       }
 
       async function deleteGoal(goalId) {
@@ -7906,6 +7926,14 @@
         <button class="btn btn-sm btn-primary" onclick="Goalivo.openRecalcModal(${g.id})">레포트 발행</button>
         <button class="btn btn-sm btn-accent" style="background:var(--c-accent);color:#fff;" onclick="Goalivo.openCheckinModal(${g.id})">📋 체크인</button>
         <button class="btn btn-sm btn-danger" onclick="Goalivo.deleteGoal(${g.id})">삭제</button>
+      </div>`;
+
+        html += `<div class="card" style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="font-size:var(--fs-sm);font-weight:600;">목표 메모</div>
+          <button class="btn btn-xs btn-primary" onclick="Goalivo.saveGoalMemo(${g.id})">메모 저장</button>
+        </div>
+        <textarea id="goalMemoQuick_${g.id}" class="form-textarea" style="min-height:82px;" placeholder="목표 관련 아이디어, 참고 링크, 다음 액션을 기록하세요.">${U.esc(g.memo || '')}</textarea>
       </div>`;
 
         // AI Report Summary
@@ -11357,33 +11385,31 @@
           html += `<div class="card">
             <div style="font-size:var(--fs-sm);font-weight:700;margin-bottom:8px;">이미지화 리스트 (${images.length})</div>
             ${images.length === 0 ? '<div style="font-size:var(--fs-xs);color:var(--c-text-muted);">추가된 이미지가 없습니다.</div>' : ''}
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;">
               ${images.map((img, idx) => {
                 const activeVariant = getVisionImageActiveVariant(img);
                 const activeDataUrl = getVisionImageActiveDataUrl(img);
                 const variants = Array.isArray(img.variants) ? img.variants : [];
                 return `<div style="border:1px solid var(--c-border);border-radius:8px;padding:8px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
-                    <span style="font-size:11px;color:var(--c-text-muted);">${idx + 1}번째 이미지</span>
-                    <button class="btn btn-xs btn-danger" onclick="Goalivo.deleteVisionImage(${idx})">삭제</button>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;">
+                    <span style="font-size:10px;color:var(--c-text-muted);">${idx + 1}번째 이미지</span>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                      <button class="btn btn-xs btn-secondary" style="padding:3px 8px;font-size:10px;" onclick="Goalivo.openVisionImageGenerator(${U.jsArg(img.id)})">AI 수정</button>
+                      <button class="btn btn-xs btn-danger" style="padding:3px 8px;font-size:10px;" onclick="Goalivo.deleteVisionImage(${idx})">삭제</button>
+                    </div>
                   </div>
-                  <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-                    <input id="visionTitle_${idx}" class="form-input" style="font-size:12px;height:34px;" value="${U.esc(img.title || '')}" placeholder="이미지 제목">
-                    <button class="btn btn-xs btn-primary" onclick="Goalivo.saveVisionImageTitle(${idx})">제목 저장</button>
+                  <div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">
+                    <input id="visionTitle_${idx}" class="form-input" style="font-size:11px;height:30px;" value="${U.esc(img.title || '')}" placeholder="이미지 제목">
+                    <button class="btn btn-xs btn-primary" style="padding:3px 8px;font-size:10px;" onclick="Goalivo.saveVisionImageTitle(${idx})">저장</button>
                   </div>
-                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-                    <button class="btn btn-xs btn-secondary" onclick="Goalivo.openVisionImageGenerator(${U.jsArg(img.id)})">AI 수정</button>
-                    <button class="btn btn-xs btn-secondary" onclick="Goalivo.selectVisionImageVariant(${idx}, 'original')">원본 사용</button>
-                    <button class="btn btn-xs btn-secondary" onclick="Goalivo.openVisionImageGenerator(${U.jsArg(img.id)}, true)">AI 다시 작업</button>
-                  </div>
-                  <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-                    <select id="visionVariant_${idx}" class="form-select" style="flex:1;min-width:150px;">
+                  <div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">
+                    <select id="visionVariant_${idx}" class="form-select" style="flex:1;min-width:130px;height:30px;font-size:11px;padding:4px 8px;">
                       ${variants.map((variant, variantIdx) => `<option value="${U.esc(variant.id)}" ${variant.id === img.activeVariantId ? 'selected' : ''}>${U.esc(getVisionImageVariantLabel(variant, variantIdx))}</option>`).join('')}
                     </select>
-                    <button class="btn btn-xs btn-primary" onclick="Goalivo.applyVisionVariantSelection(${idx})">선택 적용</button>
+                    <button class="btn btn-xs btn-primary" style="padding:3px 8px;font-size:10px;" onclick="Goalivo.applyVisionVariantSelection(${idx})">적용</button>
                   </div>
-                  <div style="font-size:11px;color:var(--c-text-muted);margin-bottom:8px;">현재 사용: ${U.esc(getVisionImageVariantLabel(activeVariant, variants.findIndex(v => v.id === activeVariant?.id)))}</div>
-                  <img src="${activeDataUrl}" alt="vision-${idx}" onclick="Goalivo.openVisionImagePreview(${idx})" style="width:100%;max-height:260px;object-fit:contain;border-radius:6px;cursor:zoom-in;">
+                  <div style="font-size:10px;color:var(--c-text-muted);margin-bottom:6px;">현재 사용: ${U.esc(getVisionImageVariantLabel(activeVariant, variants.findIndex(v => v.id === activeVariant?.id)))}</div>
+                  <img src="${activeDataUrl}" alt="vision-${idx}" onclick="Goalivo.openVisionImagePreview(${idx})" style="width:100%;max-height:210px;object-fit:contain;border-radius:6px;cursor:zoom-in;">
                 </div>`;
               }).join('')}
             </div>
@@ -11409,7 +11435,7 @@
             <input type="file" id="visionAiReferenceInput" accept="image/*" class="form-input" style="max-width:280px;height:34px;padding:4px 8px;" onchange="Goalivo.handleVisionReferenceImage(this.files)">
             <button class="btn btn-sm btn-secondary" onclick="Goalivo.clearVisionReferenceImage()">참조 이미지 제거</button>
           </div>
-          ${isEditingExisting ? `<div style="font-size:11px;color:var(--c-accent);">현재 선택한 목표보드 이미지를 기준으로 AI 수정 중입니다. 결과를 보고 원본 유지 / 새 버전 적용 / 다시 생성 중에서 고를 수 있습니다.</div>` : ''}
+          ${isEditingExisting ? `<div style="font-size:11px;color:var(--c-accent);">현재 선택한 목표보드 이미지를 기준으로 AI 수정 중입니다. 생성 결과가 나오면 적용/유지 버튼이 활성화됩니다.</div>` : ''}
           ${visionGen.referenceDataUrl ? `<div style="display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;padding:10px;border:1px solid var(--c-border);border-radius:8px;background:var(--c-surface-2);">
             <img src="${visionGen.referenceDataUrl}" alt="vision-reference" style="width:120px;height:120px;object-fit:cover;border-radius:8px;">
             <div>
@@ -11428,7 +11454,7 @@
               </div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <button class="btn btn-xs btn-secondary" onclick="Goalivo.downloadVisionAiImage()">다운로드</button>
-                <button class="btn btn-xs btn-secondary" onclick="Goalivo.keepCurrentVisionImage()">기존 유지</button>
+                ${isEditingExisting ? `<button class="btn btn-xs btn-secondary" onclick="Goalivo.keepCurrentVisionImage()">기존 유지</button>` : ''}
                 <button class="btn btn-xs btn-primary" onclick="Goalivo.applyGeneratedVisionImage(true)">${isEditingExisting ? '이 결과 적용' : '이미지화에 적용'}</button>
                 ${isEditingExisting ? `<button class="btn btn-xs btn-secondary" onclick="Goalivo.applyGeneratedVisionImage(false)">버전만 저장</button>` : ''}
               </div>
@@ -11699,6 +11725,11 @@
             persistSettingsAndSync();
             toast(selectNewVariant ? 'AI 수정본을 현재 이미지로 적용했습니다.' : 'AI 수정본을 버전 목록에 저장했습니다.', 'success');
             renderVisionBoardBody('images');
+            if (selectNewVariant) {
+              closeModal('visionImageGenModal');
+              openVisionBoardModal('images');
+              return;
+            }
             renderVisionImageGenBody();
             return;
           }
@@ -11717,6 +11748,11 @@
         persistSettingsAndSync();
         toast('생성된 이미지를 이미지화 리스트에 적용했습니다.', 'success');
         renderVisionBoardBody('images');
+        if (selectNewVariant) {
+          closeModal('visionImageGenModal');
+          openVisionBoardModal('images');
+          return;
+        }
         renderVisionImageGenBody();
       }
 
@@ -12629,6 +12665,22 @@
 
       function autoFetchGoogleCalendarOnOpen() {
         scheduleAutoFetchGoogleCalendar(0);
+      }
+
+      function bindGoogleCalendarAutoRefresh() {
+        if (window._goalivoGcalAutoBound) return;
+        window._goalivoGcalAutoBound = true;
+
+        const tryRefresh = () => {
+          // Linked users only: refresh immediately when app becomes active.
+          if (!restoreGcalToken()) return;
+          scheduleAutoFetchGoogleCalendar(0);
+        };
+
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') tryRefresh();
+        });
+        window.addEventListener('focus', tryRefresh);
       }
 
       /* ============================================================
@@ -15599,6 +15651,7 @@ ${checkinLine}
       async function init() {
         console.log('[Goalivo] Initializing...');
         bindAutoCloudSyncToDbMutations();
+        bindGoogleCalendarAutoRefresh();
 
         // 이벤트 바인딩을 먼저! (DB 실패해도 UI는 동작해야 함)
         try {
@@ -15650,7 +15703,8 @@ ${checkinLine}
 
         try {
           renderAll();
-          scheduleAutoFetchGoogleCalendar(350);
+          autoFetchGoogleCalendarOnOpen();
+          scheduleAutoFetchGoogleCalendar(1800);
           console.log('[Goalivo] Render complete');
         } catch (e) {
           console.error('[Goalivo] Render error:', e);
@@ -15702,6 +15756,7 @@ ${checkinLine}
         navigate,
         openGoalModal,
         saveGoal,
+        saveGoalMemo,
         deleteGoal,
         selectGoal,
         renderRoutinePage,
