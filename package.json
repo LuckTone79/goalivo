@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "verify:guide": "node scripts/verify-guide-click-safety.js",
+    "test": "npm run verify:guide"
   },
   "keywords": [],
   "author": "",

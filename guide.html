@@ -6,13 +6,13 @@
 <title>Goalivo 사용 가이드북 — 목표 달성용 타임라인 캘린더</title>
 <link rel="icon" type="image/svg+xml" href="/goalivo-logo.svg">
 <meta name="description" content="Goalivo 사용 가이드북. 목표를 세우고, 역산해서, 실행까지 — 다른 캘린더에는 없는 목표 역산 기능을 포함한 올인원 타임라인 캘린더입니다.">
-<meta property="og:title" content="Goalivo 사용 가이드북">
-<meta property="og:description" content="목표를 세우고, 역산해서, 실행까지. AI가 돕는 올인원 타임라인 캘린더 가이드.">
+<meta property="og:title" content="Goalivo Guide">
+<meta property="og:description" content="Goal-setting AI timeline calendar guide.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://goalivo.widegetlab.com/guide">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -21,27 +21,37 @@
   --accent:#0891b2;--accent-hover:#0e7490;--accent-bg:rgba(8,145,178,0.08);
   --green:#10b981;--yellow:#f59e0b;--red:#ef4444;--purple:#8b5cf6;--blue:#3b82f6;
   --radius:12px;--radius-sm:8px;--radius-lg:16px;
-  --font:'Plus Jakarta Sans','Be Vietnam Pro',-apple-system,sans-serif;
+  --font:'Plus Jakarta Sans','Be Vietnam Pro','Noto Sans JP',-apple-system,sans-serif;
   --shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
   --shadow-lg:0 10px 25px rgba(0,0,0,0.08);
 }
 body{font-family:var(--font);color:var(--text);background:var(--bg);line-height:1.7;-webkit-font-smoothing:antialiased;}
 a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 
-/* ── Hero ── */
+/* Layer safety */
+.decorative-overlay{position:absolute;pointer-events:none;z-index:0;}
+.interactive-layer{position:relative;z-index:1;}
+
+/* Hero */
 .hero{background:linear-gradient(135deg,#0c4a6e 0%,#0891b2 50%,#06b6d4 100%);color:#fff;padding:80px 24px 60px;text-align:center;position:relative;overflow:hidden;}
-.hero::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(255,255,255,0.05) 0%,transparent 60%);animation:heroShine 8s ease-in-out infinite;}
+.hero-overlay{top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(255,255,255,0.05) 0%,transparent 60%);animation:heroShine 8s ease-in-out infinite;}
 @keyframes heroShine{0%,100%{transform:translate(0,0);}50%{transform:translate(30px,20px);}}
 .hero-badge{display:inline-block;padding:6px 16px;border-radius:20px;background:rgba(255,255,255,0.15);font-size:13px;font-weight:600;margin-bottom:20px;backdrop-filter:blur(8px);}
 .hero h1{font-size:clamp(28px,5vw,48px);font-weight:800;margin-bottom:12px;letter-spacing:-0.02em;}
 .hero p{font-size:clamp(15px,2.5vw,19px);opacity:0.9;max-width:600px;margin:0 auto 32px;}
-.hero-cta{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:#fff;color:#0891b2;border-radius:12px;font-weight:700;font-size:16px;transition:transform 0.2s,box-shadow 0.2s;box-shadow:0 4px 16px rgba(0,0,0,0.15);}
+.hero-cta{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:#fff;color:#0891b2;border-radius:12px;font-weight:700;font-size:16px;transition:transform 0.2s,box-shadow 0.2s;box-shadow:0 4px 16px rgba(0,0,0,0.15);cursor:pointer;text-decoration:none;}
 .hero-cta:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2);text-decoration:none;}
 .hero-share{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;}
 .hero-share-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:8px;background:rgba(255,255,255,0.12);color:#fff;font-size:13px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,0.2);transition:background 0.2s;}
 .hero-share-btn:hover{background:rgba(255,255,255,0.22);text-decoration:none;}
 
-/* ── Navigation ── */
+/* Language Switcher */
+.lang-switcher{position:fixed;top:12px;right:16px;z-index:200;display:flex;gap:4px;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);padding:4px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.1);border:1px solid var(--border);}
+.lang-btn{display:flex;align-items:center;gap:4px;padding:6px 10px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;background:transparent;color:var(--text-dim);transition:all 0.2s;white-space:nowrap;}
+.lang-btn:hover{background:var(--accent-bg);color:var(--accent);}
+.lang-btn.active{background:var(--accent);color:#fff;}
+
+/* Navigation */
 .guide-nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;}
 .guide-nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:8px;overflow-x:auto;padding:12px 0;scrollbar-width:none;}
 .guide-nav-inner::-webkit-scrollbar{display:none;}
@@ -49,36 +59,34 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 .guide-nav a:hover{background:var(--accent-bg);color:var(--accent);text-decoration:none;}
 .guide-nav .logo-link{font-weight:800;color:var(--accent);font-size:16px;margin-right:auto;padding-left:0;}
 
-/* ── Content ── */
+/* Content */
 .guide-content{max-width:900px;margin:0 auto;padding:40px 24px 80px;}
 
-/* ── Section ── */
+/* Section */
 .section{margin-bottom:64px;scroll-margin-top:80px;}
 .section-badge{display:inline-block;padding:4px 12px;border-radius:6px;background:var(--accent-bg);color:var(--accent);font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:12px;}
 .section h2{font-size:clamp(22px,4vw,32px);font-weight:800;letter-spacing:-0.02em;margin-bottom:8px;color:var(--text);}
 .section .section-desc{font-size:16px;color:var(--text-dim);margin-bottom:24px;line-height:1.7;}
 .section h3{font-size:18px;font-weight:700;margin:24px 0 12px;color:var(--text);}
 
-/* ── Feature Card ── */
+/* Feature Card */
 .feature-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;margin-bottom:20px;box-shadow:var(--shadow);transition:box-shadow 0.3s;}
 .feature-card:hover{box-shadow:var(--shadow-lg);}
 .feature-card h4{font-size:16px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
 .feature-card p{font-size:14px;color:var(--text-dim);line-height:1.7;}
 
-/* ── Unique Badge ── */
+/* Unique Badge */
 .unique-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#78350f;font-size:10px;font-weight:700;letter-spacing:0.05em;}
 
-/* ── Mockup Container ── */
+/* Mockup */
 .mockup{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin:20px 0;box-shadow:var(--shadow-lg);}
 .mockup-titlebar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface-alt);border-bottom:1px solid var(--border);}
 .mockup-dot{width:10px;height:10px;border-radius:50%;background:#e2e8f0;}
-.mockup-dot.r{background:#ef4444;}
-.mockup-dot.y{background:#f59e0b;}
-.mockup-dot.g{background:#22c55e;}
+.mockup-dot.r{background:#ef4444;}.mockup-dot.y{background:#f59e0b;}.mockup-dot.g{background:#22c55e;}
 .mockup-url{flex:1;text-align:center;font-size:11px;color:var(--text-muted);background:var(--surface);padding:4px 12px;border-radius:6px;margin:0 40px;}
 .mockup-body{padding:0;overflow:hidden;}
 
-/* ── Calendar Mockup ── */
+/* Calendar Mockup */
 .mock-app{display:flex;min-height:420px;font-size:13px;}
 .mock-sidebar{width:200px;background:#f8fafb;border-right:1px solid #e2e8f0;padding:16px;flex-shrink:0;}
 .mock-sidebar-title{font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em;}
@@ -86,9 +94,6 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 .mock-sidebar-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .mock-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #e2e8f0;background:#fff;}
 .mock-header-title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px;}
-.mock-nav-tabs{display:flex;gap:2px;padding:0 20px;background:#fff;border-bottom:1px solid #e2e8f0;}
-.mock-nav-tab{padding:8px 14px;font-size:12px;color:#94a3b8;border-bottom:2px solid transparent;font-weight:600;}
-.mock-nav-tab.active{color:#0891b2;border-bottom-color:#0891b2;}
 .mock-main{flex:1;display:flex;flex-direction:column;}
 .mock-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);flex:1;}
 .mock-cal-header{padding:8px;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;background:#f8fafb;border-bottom:1px solid #e2e8f0;}
@@ -96,33 +101,22 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 .mock-cal-header:last-child{color:#3b82f6;}
 .mock-cal-cell{padding:4px 6px;border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:60px;position:relative;}
 .mock-cal-cell .day{font-size:11px;font-weight:600;margin-bottom:4px;}
-.mock-cal-cell .day.sun{color:#ef4444;}
-.mock-cal-cell .day.sat{color:#3b82f6;}
+.mock-cal-cell .day.sun{color:#ef4444;}.mock-cal-cell .day.sat{color:#3b82f6;}
 .mock-cal-cell .day.today{background:#0891b2;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;}
 .mock-event{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-
-/* ── Goal Mockup ── */
 .mock-goal-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px;}
 .mock-goal-card .title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.mock-goal-card .meta{font-size:11px;color:#94a3b8;display:flex;gap:12px;margin-bottom:10px;}
+.mock-goal-card .meta{font-size:11px;color:#94a3b8;display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
 .mock-progress{height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;}
-.mock-progress-bar{height:100%;border-radius:3px;transition:width 0.3s;}
+.mock-progress-bar{height:100%;border-radius:3px;}
 .mock-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;}
-
-/* ── Timetable Mockup ── */
-.mock-tt{display:grid;grid-template-columns:60px 1fr;font-size:12px;}
-.mock-tt-time{padding:4px 8px;text-align:right;font-size:10px;color:#94a3b8;border-right:1px solid #e2e8f0;height:40px;display:flex;align-items:flex-start;justify-content:flex-end;}
-.mock-tt-slot{border-bottom:1px solid #f1f5f9;height:40px;position:relative;padding:2px 8px;}
-.mock-tt-block{position:absolute;left:8px;right:8px;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;display:flex;align-items:center;gap:4px;}
-
-/* ── AI Report Mockup ── */
 .mock-ai{background:linear-gradient(135deg,#f0f9ff,#ecfdf5);border:1px solid #bae6fd;border-radius:12px;padding:20px;margin:16px 0;}
 .mock-ai-title{font-size:14px;font-weight:700;color:#0369a1;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .mock-ai-item{display:flex;gap:8px;margin-bottom:8px;font-size:12px;align-items:flex-start;}
 .mock-ai-item .icon{font-size:16px;flex-shrink:0;margin-top:1px;}
 .mock-ai-item .content{color:#334155;line-height:1.5;}
 
-/* ── Comparison Table ── */
+/* Comparison Table */
 .compare-table{width:100%;border-collapse:collapse;font-size:13px;margin:20px 0;background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
 .compare-table th{background:var(--surface-alt);padding:12px 16px;text-align:left;font-weight:700;border-bottom:2px solid var(--border);}
 .compare-table td{padding:10px 16px;border-bottom:1px solid var(--border);}
@@ -131,26 +125,22 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 .compare-table .cross{color:var(--text-muted);}
 .compare-table .star{color:var(--yellow);font-weight:700;}
 
-/* ── Step Indicator ── */
+/* Steps */
 .steps{counter-reset:step;}
 .step{counter-increment:step;display:flex;gap:16px;margin-bottom:24px;align-items:flex-start;}
 .step::before{content:counter(step);flex-shrink:0;width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;margin-top:2px;}
 .step-content h4{font-size:15px;font-weight:700;margin-bottom:4px;}
 .step-content p{font-size:13px;color:var(--text-dim);line-height:1.6;}
 
-/* ── Highlight Box ── */
+/* Highlight Box */
 .highlight-box{padding:20px;border-radius:var(--radius);margin:16px 0;display:flex;gap:12px;align-items:flex-start;}
 .highlight-box.tip{background:#ecfdf5;border-left:4px solid #10b981;}
 .highlight-box.info{background:#eff6ff;border-left:4px solid #3b82f6;}
-.highlight-box.warning{background:#fffbeb;border-left:4px solid #f59e0b;}
 .highlight-box .icon{font-size:20px;flex-shrink:0;}
 .highlight-box .content{font-size:13px;color:var(--text-dim);line-height:1.6;}
 .highlight-box .content strong{color:var(--text);}
 
-/* ── Keyboard Shortcut ── */
-kbd{display:inline-block;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;font-size:11px;font-family:'Inter',monospace;font-weight:500;box-shadow:0 1px 0 #d1d5db;}
-
-/* ── Grid Layouts ── */
+/* Grids */
 .feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin:20px 0;}
 .skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin:20px 0;}
 .skin-card{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface);box-shadow:var(--shadow);}
@@ -160,7 +150,7 @@ kbd{display:inline-block;padding:2px 6px;border:1px solid #d1d5db;border-radius:
 .skin-info h5{font-size:13px;font-weight:700;margin-bottom:2px;}
 .skin-info p{font-size:11px;color:var(--text-muted);}
 
-/* ── TOC ── */
+/* TOC */
 .toc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;margin-bottom:48px;box-shadow:var(--shadow);}
 .toc h3{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
 .toc-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px;}
@@ -168,15 +158,18 @@ kbd{display:inline-block;padding:2px 6px;border:1px solid #d1d5db;border-radius:
 .toc-list a:hover{background:var(--accent-bg);color:var(--accent);text-decoration:none;}
 .toc-list a .num{font-weight:700;color:var(--accent);min-width:24px;}
 
-/* ── Footer ── */
+/* Footer */
 .guide-footer{text-align:center;padding:40px 24px;border-top:1px solid var(--border);background:var(--surface);}
 .guide-footer p{font-size:13px;color:var(--text-muted);margin-bottom:8px;}
 .guide-footer a{font-weight:600;}
 
-/* ── Responsive ── */
+/* Toast */
+.guide-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:all 0.3s ease;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.2);}
+.guide-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* Responsive */
 @media(max-width:768px){
-  .mock-sidebar{display:none;}
-  .mock-app{min-height:320px;}
+  .mock-sidebar{display:none;}.mock-app{min-height:320px;}
   .feature-grid{grid-template-columns:1fr;}
   .skin-grid{grid-template-columns:repeat(2,1fr);}
   .hero{padding:60px 20px 40px;}
@@ -184,202 +177,610 @@ kbd{display:inline-block;padding:2px 6px;border:1px solid #d1d5db;border-radius:
   .toc-list{grid-template-columns:1fr;}
   .compare-table{font-size:11px;}
   .compare-table th,.compare-table td{padding:8px 10px;}
+  .lang-switcher{top:auto;bottom:12px;right:12px;flex-direction:column;}
 }
-
-/* ── Print ── */
 @media print{
-  .guide-nav,.hero-cta,.hero-share{display:none;}
+  .guide-nav,.hero-cta,.hero-share,.lang-switcher{display:none;}
   .hero{padding:30px 20px;background:#0891b2 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .mockup{break-inside:avoid;}
-  .section{break-inside:avoid;}
+  .mockup{break-inside:avoid;}.section{break-inside:avoid;}
 }
 
-/* ── Share Modal ── */
-.share-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;}
-.share-modal-overlay.active{display:flex;}
-.share-modal{background:#fff;border-radius:16px;padding:32px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
-.share-modal h3{font-size:18px;font-weight:700;margin-bottom:16px;}
-.share-url-box{display:flex;gap:8px;margin-bottom:16px;}
-.share-url-box input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);color:var(--text);}
-.share-url-box button{padding:10px 20px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:13px;white-space:nowrap;transition:background 0.2s;}
-.share-url-box button:hover{background:var(--accent-hover);}
-.share-qr{text-align:center;margin:20px 0;}
-.share-qr canvas{border-radius:8px;}
-.share-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
-.share-method{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border-radius:8px;cursor:pointer;border:1px solid var(--border);font-size:11px;font-weight:500;color:var(--text-dim);transition:all 0.2s;}
-.share-method:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);}
-.share-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border:none;background:transparent;cursor:pointer;font-size:18px;color:var(--text-muted);border-radius:6px;}
-.share-close:hover{background:var(--surface-alt);}
+/* ─── Spotlight (핵심 기능 하이라이트) ─── */
+.spotlight-wrap{margin-bottom:52px;}
+.spotlight-hero{text-align:center;padding:40px 28px;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);border-radius:20px;margin-bottom:28px;position:relative;overflow:hidden;}
+.spotlight-hero::after{content:'';position:absolute;top:-80px;right:-80px;width:360px;height:360px;background:radial-gradient(circle,rgba(8,145,178,0.28),transparent 70%);pointer-events:none;}
+.spotlight-pill{display:inline-block;padding:4px 16px;background:rgba(8,145,178,0.25);border:1px solid rgba(8,145,178,0.5);border-radius:20px;font-size:12px;font-weight:700;color:#67e8f9;margin-bottom:16px;letter-spacing:0.06em;}
+.spotlight-hero h2{color:#fff;font-size:clamp(20px,4vw,28px);font-weight:800;margin-bottom:8px;}
+.spotlight-hero p{color:rgba(255,255,255,0.65);font-size:15px;max-width:480px;margin:0 auto;}
+.spotlight-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;margin-bottom:24px;box-shadow:var(--shadow);}
+.spotlight-item-hd h3{font-size:20px;font-weight:800;margin:8px 0 6px;}
+.spotlight-item-hd p{font-size:14px;color:var(--text-dim);}
+.spotlight-sub-title{font-size:13px;font-weight:700;color:var(--text-dim);margin:20px 0 8px;display:flex;align-items:center;gap:6px;}
+
+/* ─── Quarter View ─── */
+.qtr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#e2e8f0;border-radius:10px;overflow:hidden;margin:12px 0;}
+.qtr-col{background:#fff;padding:14px;}
+.qtr-col-hd{font-size:12px;font-weight:800;color:#0891b2;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f1f5f9;}
+.ms-bar{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:0 6px 6px 0;border-left:3px solid;margin-bottom:5px;font-size:10px;font-weight:600;}
+.qtr-event{padding:3px 7px;border-radius:4px;font-size:9px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.qtr-progress-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+.qtr-progress-card{background:#fff;border-radius:10px;padding:12px;border:1px solid #e2e8f0;text-align:center;}
+.qtr-progress-num{font-size:22px;font-weight:800;}
+.qtr-progress-label{font-size:10px;color:#94a3b8;margin-top:2px;}
+.qtr-bar{height:4px;background:#e2e8f0;border-radius:2px;margin-top:6px;overflow:hidden;}
+.qtr-bar-fill{height:100%;border-radius:2px;}
+
+/* ─── Year View ─── */
+.yr-timeline{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;}
+.yr-timeline-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.yr-timeline-bar{height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;position:relative;}
+.yr-timeline-seg{position:absolute;top:0;height:100%;}
+.yr-timeline-labels{display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:#94a3b8;}
+.yr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;}
+.yr-month{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;}
+.yr-month-nm{font-size:10px;font-weight:700;color:#64748b;margin-bottom:6px;}
+.yr-ms{height:5px;border-radius:3px;margin-bottom:3px;}
+
+/* ─── Vision Board ─── */
+.vb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0;}
+.vb-card{aspect-ratio:4/3;border-radius:12px;display:flex;align-items:flex-end;padding:10px;position:relative;overflow:hidden;}
+.vb-card::before{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55));}
+.vb-card-label{position:relative;z-index:1;color:#fff;font-size:11px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,0.5);}
+.vb-popup-wrap{background:rgba(15,23,42,0.8);border-radius:16px;padding:24px;margin-top:14px;display:flex;justify-content:center;align-items:center;min-height:300px;position:relative;}
+.vb-popup{background:#fff;border-radius:16px;overflow:hidden;width:100%;max-width:290px;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
+.vb-popup-hd{padding:10px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:6px;font-size:11px;}
+.vb-popup-img{width:100%;height:140px;display:flex;align-items:center;justify-content:center;font-size:52px;}
+.vb-popup-bd{padding:14px;text-align:center;}
+.vb-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px;}
+.vb-info-card{border-radius:10px;padding:14px;border-left:3px solid;}
+
+@media(max-width:600px){
+  .qtr-grid{grid-template-columns:1fr;}
+  .yr-grid{grid-template-columns:repeat(3,1fr);}
+  .vb-grid{grid-template-columns:repeat(2,1fr);}
+  .qtr-progress-row{grid-template-columns:1fr 1fr;}
+}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════ -->
-<!-- HERO                                       -->
-<!-- ═══════════════════════════════════════════ -->
+<!-- Language Switcher (fixed top-right) -->
+<div class="lang-switcher" id="langSwitcher">
+  <button class="lang-btn active" onclick="setLang('ko')"><span>KR</span></button>
+  <button class="lang-btn" onclick="setLang('en')"><span>EN</span></button>
+  <button class="lang-btn" onclick="setLang('ja')"><span>JP</span></button>
+</div>
+
+<!-- Toast -->
+<div class="guide-toast" id="guideToast"></div>
+
+<!-- HERO -->
 <header class="hero">
-  <div class="hero-badge">v2026.05.01 Guide</div>
-  <h1>Goalivo 사용 가이드북</h1>
-  <p>목표를 세우고, 역산해서, 실행까지 도와주는<br>AI 타임라인 캘린더의 모든 기능을 알려드립니다</p>
-  <a href="https://goalivo.widegetlab.com" class="hero-cta">
+  <div class="decorative-overlay hero-overlay" aria-hidden="true"></div>
+  <div class="interactive-layer">
+  <div class="hero-badge">v2026.05.05-05 Guide</div>
+  <h1 data-i18n="hero_title">Goalivo 사용 가이드북</h1>
+  <p data-i18n="hero_desc">목표를 세우고, 역산해서, 실행까지 도와주는<br>AI 타임라인 캘린더의 모든 기능을 알려드립니다</p>
+  <a id="heroStartLink" href="https://goalivo.widegetlab.com/" target="_blank" rel="noopener noreferrer" class="hero-cta">
     <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M13 3l8 4v10l-8 4-8-4V7l8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M13 13V3M13 13l8-4M13 13l-8-4" stroke="currentColor" stroke-width="2"/></svg>
-    Goalivo 시작하기
+    <span data-i18n="hero_cta">Goalivo 시작하기</span>
   </a>
   <div class="hero-share">
-    <button class="hero-share-btn" onclick="openShareModal()">
-      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M18 8a3 3 0 100-6 3 3 0 000 6zM6 15a3 3 0 100-6 3 3 0 000 6zM18 22a3 3 0 100-6 3 3 0 000 6zM8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" stroke="currentColor" stroke-width="2"/></svg>
-      이 가이드 공유하기
+    <button type="button" id="shareGuideButton" class="hero-share-btn">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span data-i18n="hero_share">이 가이드 공유하기</span>
     </button>
-    <button class="hero-share-btn" onclick="window.print()">
-      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" stroke="currentColor" stroke-width="2"/><rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="2"/></svg>
-      PDF 저장
-    </button>
+  </div>
   </div>
 </header>
 
-<!-- ═══════════════════════════════════════════ -->
-<!-- NAV                                        -->
-<!-- ═══════════════════════════════════════════ -->
+<!-- NAV -->
 <nav class="guide-nav">
   <div class="guide-nav-inner">
-    <a href="/" class="logo-link">Goalivo</a>
-    <a href="#overview">소개</a>
-    <a href="#calendar">캘린더</a>
-    <a href="#goals">목표 관리</a>
-    <a href="#reverse">역산 기능</a>
-    <a href="#ai">AI 리포터</a>
-    <a href="#timetable">타임테이블</a>
-    <a href="#routine">루틴</a>
-    <a href="#reports">리포트</a>
-    <a href="#themes">테마</a>
-    <a href="#settings">설정</a>
-    <a href="#tips">꿀팁</a>
+    <a href="https://goalivo.widegetlab.com" class="logo-link" target="_blank" rel="noopener noreferrer">Goalivo</a>
+    <a href="#overview" data-i18n="nav_intro">소개</a>
+    <a href="#calendar" data-i18n="nav_calendar">캘린더</a>
+    <a href="#goals" data-i18n="nav_goals">목표 관리</a>
+    <a href="#reverse" data-i18n="nav_reverse">역산 기능</a>
+    <a href="#ai" data-i18n="nav_ai">AI 리포터</a>
+    <a href="#timetable" data-i18n="nav_timetable">타임테이블</a>
+    <a href="#routine" data-i18n="nav_routine">루틴</a>
+    <a href="#reports" data-i18n="nav_reports">리포트</a>
+    <a href="#themes" data-i18n="nav_themes">테마</a>
+    <a href="#settings" data-i18n="nav_settings">설정</a>
+    <a href="#tips" data-i18n="nav_tips">꿀팁</a>
   </div>
 </nav>
 
-<!-- ═══════════════════════════════════════════ -->
-<!-- CONTENT                                    -->
-<!-- ═══════════════════════════════════════════ -->
+<!-- CONTENT -->
 <main class="guide-content">
 
 <!-- TOC -->
 <div class="toc">
-  <h3>📋 목차</h3>
+  <h3 data-i18n="toc_title">📋 목차</h3>
   <div class="toc-list">
-    <a href="#overview"><span class="num">01</span> Goalivo란?</a>
-    <a href="#start"><span class="num">02</span> 시작하기</a>
-    <a href="#calendar"><span class="num">03</span> 캘린더 뷰</a>
-    <a href="#goals"><span class="num">04</span> 목표 관리</a>
-    <a href="#reverse"><span class="num">05</span> 목표 역산 기능</a>
-    <a href="#milestones"><span class="num">06</span> 마일스톤</a>
-    <a href="#ai"><span class="num">07</span> AI 리포터</a>
-    <a href="#timetable"><span class="num">08</span> 타임테이블</a>
-    <a href="#routine"><span class="num">09</span> 루틴 관리</a>
-    <a href="#reports"><span class="num">10</span> 리포트 & 분석</a>
-    <a href="#quickadd"><span class="num">11</span> 빠른 추가</a>
-    <a href="#vision"><span class="num">12</span> 비전보드</a>
-    <a href="#google"><span class="num">13</span> Google 연동</a>
-    <a href="#themes"><span class="num">14</span> 테마 & 스킨</a>
-    <a href="#i18n"><span class="num">15</span> 다국어 지원</a>
-    <a href="#data"><span class="num">16</span> 데이터 관리</a>
-    <a href="#settings"><span class="num">17</span> 설정</a>
-    <a href="#compare"><span class="num">18</span> 비교표</a>
-    <a href="#tips"><span class="num">19</span> 꿀팁 모음</a>
-    <a href="#faq"><span class="num">20</span> FAQ</a>
+    <a href="#overview"><span class="num">01</span> <span data-i18n="toc_01">Goalivo란?</span></a>
+    <a href="#start"><span class="num">02</span> <span data-i18n="toc_02">시작하기</span></a>
+    <a href="#calendar"><span class="num">03</span> <span data-i18n="toc_03">캘린더 뷰</span></a>
+    <a href="#goals"><span class="num">04</span> <span data-i18n="toc_04">목표 관리</span></a>
+    <a href="#reverse"><span class="num">05</span> <span data-i18n="toc_05">목표 역산 기능</span></a>
+    <a href="#milestones"><span class="num">06</span> <span data-i18n="toc_06">마일스톤</span></a>
+    <a href="#ai"><span class="num">07</span> <span data-i18n="toc_07">AI 리포터</span></a>
+    <a href="#timetable"><span class="num">08</span> <span data-i18n="toc_08">타임테이블</span></a>
+    <a href="#routine"><span class="num">09</span> <span data-i18n="toc_09">루틴 관리</span></a>
+    <a href="#reports"><span class="num">10</span> <span data-i18n="toc_10">리포트 & 분석</span></a>
+    <a href="#quickadd"><span class="num">11</span> <span data-i18n="toc_11">빠른 추가</span></a>
+    <a href="#vision"><span class="num">12</span> <span data-i18n="toc_12">비전보드</span></a>
+    <a href="#google"><span class="num">13</span> <span data-i18n="toc_13">Google 연동</span></a>
+    <a href="#themes"><span class="num">14</span> <span data-i18n="toc_14">테마 & 스킨</span></a>
+    <a href="#i18n"><span class="num">15</span> <span data-i18n="toc_15">다국어 지원</span></a>
+    <a href="#data"><span class="num">16</span> <span data-i18n="toc_16">데이터 관리</span></a>
+    <a href="#settings"><span class="num">17</span> <span data-i18n="toc_17">설정</span></a>
+    <a href="#compare"><span class="num">18</span> <span data-i18n="toc_18">비교표</span></a>
+    <a href="#tips"><span class="num">19</span> <span data-i18n="toc_19">꿀팁 모음</span></a>
+    <a href="#faq"><span class="num">20</span> <span data-i18n="toc_20">FAQ</span></a>
   </div>
 </div>
 
+<!-- ★ SPOTLIGHT: GOALIVO 핵심 차별화 기능 ★ -->
+<div class="spotlight-wrap" id="spotlight">
 
-<!-- ═══════════════════════ SECTION 01 ═══════════════════════ -->
+  <div class="spotlight-hero">
+    <div class="spotlight-pill">✨ GOALIVO ONLY — 핵심 차별화 기능</div>
+    <h2>다른 캘린더에는 없는 기능을 먼저 확인하세요</h2>
+    <p>목표 달성에 특화된 Goalivo만의 핵심 기능 — 분기/연간 마일스톤 뷰와 비전보드 팝업</p>
+  </div>
+
+  <!-- ━━ FEATURE A: QUARTER & YEAR MILESTONE VIEWS ━━ -->
+  <div class="spotlight-item">
+    <div class="spotlight-item-hd">
+      <span class="unique-badge">Goalivo Only</span>
+      <h3>📊 분기(Quarter) & 연간(Year) 마일스톤 뷰</h3>
+      <p>목표의 마일스톤이 Quarter 뷰에서는 3개월 단위로, Year 뷰에서는 1년 전체 타임라인으로 펼쳐집니다. 진행률과 지연 여부를 한눈에 파악하세요.</p>
+    </div>
+
+    <!-- Quarter View Mockup -->
+    <div class="spotlight-sub-title">📈 Quarter 뷰 — Q2 2026 분기 마일스톤 현황</div>
+    <div class="mockup">
+      <div class="mockup-titlebar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <div class="mockup-url">goalivo.widegetlab.com — Q2 2026</div>
+      </div>
+      <div class="mockup-body" style="padding:20px;background:#f8fafb;">
+        <!-- Header row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;">◀ <span style="color:#0891b2;">Q2 2026</span> ▶</div>
+          <div style="display:flex;gap:4px;font-size:11px;">
+            <span style="padding:4px 10px;border-radius:6px;color:#94a3b8;">Month</span>
+            <span style="padding:4px 10px;border-radius:6px;background:#0891b2;color:#fff;font-weight:600;">Quarter</span>
+            <span style="padding:4px 10px;border-radius:6px;color:#94a3b8;">Year</span>
+          </div>
+        </div>
+        <!-- Legend -->
+        <div style="display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;"><div style="width:12px;height:12px;border-radius:3px;background:#3b82f6;"></div>TOEIC 900점</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;"><div style="width:12px;height:12px;border-radius:3px;background:#10b981;"></div>마라톤 완주</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;"><div style="width:12px;height:12px;border-radius:3px;background:#f59e0b;"></div>포트폴리오 제작</div>
+        </div>
+        <!-- 3-column quarter grid -->
+        <div class="qtr-grid">
+          <!-- 4월 -->
+          <div class="qtr-col">
+            <div class="qtr-col-hd">4월 April</div>
+            <div class="ms-bar" style="background:#dbeafe;border-color:#3b82f6;color:#1d4ed8;"><span>M2: LC 훈련</span><span style="color:#10b981;">완료 ✓</span></div>
+            <div class="ms-bar" style="background:#dcfce7;border-color:#10b981;color:#166534;"><span>M1: 기초 러닝</span><span style="color:#10b981;">완료 ✓</span></div>
+            <div style="height:8px;"></div>
+            <div class="qtr-event" style="background:#dbeafe;color:#1e40af;">📝 TOEIC 모의고사 ①</div>
+            <div class="qtr-event" style="background:#dcfce7;color:#166534;">🏃 10km 러닝 대회</div>
+            <div class="qtr-event" style="background:#fef3c7;color:#92400e;">🎨 UX 리서치 완료</div>
+          </div>
+          <!-- 5월 -->
+          <div class="qtr-col">
+            <div class="qtr-col-hd">5월 May <span style="float:right;font-size:9px;color:#f59e0b;font-weight:600;">진행 중</span></div>
+            <div class="ms-bar" style="background:#dbeafe;border-color:#3b82f6;color:#1d4ed8;"><span>M3: RC 훈련</span><span style="color:#f59e0b;">68%</span></div>
+            <div class="ms-bar" style="background:#dcfce7;border-color:#10b981;color:#166534;"><span>M2: 인터벌 훈련</span><span style="color:#f59e0b;">45%</span></div>
+            <div class="ms-bar" style="background:#fef3c7;border-color:#f59e0b;color:#92400e;"><span>M1: 와이어프레임</span><span style="color:#f59e0b;">30%</span></div>
+            <div style="height:4px;"></div>
+            <div class="qtr-event" style="background:#dbeafe;color:#1e40af;">📖 RC 파트5 특강</div>
+            <div class="qtr-event" style="background:#dbeafe;color:#1e40af;">📝 TOEIC 모의고사 ②</div>
+          </div>
+          <!-- 6월 -->
+          <div class="qtr-col">
+            <div class="qtr-col-hd">6월 June <span style="float:right;font-size:9px;color:#94a3b8;font-weight:600;">예정</span></div>
+            <div class="ms-bar" style="background:#eff6ff;border-color:#93c5fd;color:#3b82f6;"><span>M4: 실전 모의</span><span style="color:#94a3b8;">예정</span></div>
+            <div class="ms-bar" style="background:#f0fdf4;border-color:#86efac;color:#16a34a;"><span>M3: 하프 마라톤</span><span style="color:#94a3b8;">예정</span></div>
+            <div class="ms-bar" style="background:#fffbeb;border-color:#fcd34d;color:#b45309;"><span>M2: 디자인 완성</span><span style="color:#94a3b8;">예정</span></div>
+            <div style="height:4px;"></div>
+            <div class="qtr-event" style="background:#fce7f3;color:#9d174d;">🏆 TOEIC 시험일</div>
+            <div class="qtr-event" style="background:#dcfce7;color:#166534;">🏃 하프 마라톤 대회</div>
+            <div class="qtr-event" style="background:#fef3c7;color:#92400e;">🚀 포트폴리오 배포</div>
+          </div>
+        </div>
+        <!-- Progress summary -->
+        <div class="qtr-progress-row">
+          <div class="qtr-progress-card">
+            <div class="qtr-progress-num" style="color:#0891b2;">68%</div>
+            <div class="qtr-progress-label">TOEIC 진행률</div>
+            <div class="qtr-bar"><div class="qtr-bar-fill" style="width:68%;background:#0891b2;"></div></div>
+          </div>
+          <div class="qtr-progress-card">
+            <div class="qtr-progress-num" style="color:#10b981;">45%</div>
+            <div class="qtr-progress-label">마라톤 진행률</div>
+            <div class="qtr-bar"><div class="qtr-bar-fill" style="width:45%;background:#10b981;"></div></div>
+          </div>
+          <div class="qtr-progress-card">
+            <div class="qtr-progress-num" style="color:#f59e0b;">30%</div>
+            <div class="qtr-progress-label">포트폴리오 진행</div>
+            <div class="qtr-bar"><div class="qtr-bar-fill" style="width:30%;background:#f59e0b;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Year View Mockup -->
+    <div class="spotlight-sub-title">🗃️ Year 뷰 — 2026년 연간 목표 타임라인</div>
+    <div class="mockup">
+      <div class="mockup-titlebar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <div class="mockup-url">goalivo.widegetlab.com — 2026년</div>
+      </div>
+      <div class="mockup-body" style="padding:20px;background:#f8fafb;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:16px;font-weight:700;">◀ <span style="color:#0891b2;">2026년</span> ▶</div>
+          <div style="display:flex;gap:4px;font-size:11px;">
+            <span style="padding:4px 10px;border-radius:6px;color:#94a3b8;">Quarter</span>
+            <span style="padding:4px 10px;border-radius:6px;background:#0891b2;color:#fff;font-weight:600;">Year</span>
+            <span style="padding:4px 10px;border-radius:6px;color:#94a3b8;">5Y</span>
+          </div>
+        </div>
+        <!-- TOEIC timeline bar -->
+        <div class="yr-timeline">
+          <div class="yr-timeline-hd">
+            <div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block;"></span>TOEIC 900점 &nbsp;<span style="color:#64748b;font-weight:400;font-size:12px;">D-56</span></div>
+            <div style="font-size:12px;color:#3b82f6;font-weight:700;">68% 진행</div>
+          </div>
+          <div class="yr-timeline-bar">
+            <div class="yr-timeline-seg" style="left:0;width:12%;background:#93c5fd;border-radius:4px 0 0 4px;" title="M1 완료"></div>
+            <div class="yr-timeline-seg" style="left:12%;width:18%;background:#60a5fa;" title="M2 완료"></div>
+            <div class="yr-timeline-seg" style="left:30%;width:38%;background:#3b82f6;" title="M3 진행중"></div>
+            <div class="yr-timeline-seg" style="left:68%;width:32%;background:#e2e8f0;" title="M4 예정"></div>
+          </div>
+          <div class="yr-timeline-labels"><span>1월</span><span>3월</span><span>6월</span><span>9월 🏆</span><span>12월</span></div>
+        </div>
+        <!-- Marathon timeline bar -->
+        <div class="yr-timeline">
+          <div class="yr-timeline-hd">
+            <div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;"></span>마라톤 완주 &nbsp;<span style="color:#64748b;font-weight:400;font-size:12px;">D-142</span></div>
+            <div style="font-size:12px;color:#10b981;font-weight:700;">45% 진행</div>
+          </div>
+          <div class="yr-timeline-bar">
+            <div class="yr-timeline-seg" style="left:0;width:20%;background:#86efac;border-radius:4px 0 0 4px;"></div>
+            <div class="yr-timeline-seg" style="left:20%;width:25%;background:#4ade80;"></div>
+            <div class="yr-timeline-seg" style="left:45%;width:55%;background:#e2e8f0;"></div>
+          </div>
+          <div class="yr-timeline-labels"><span>1월</span><span>3월</span><span>6월</span><span>10월 🏃</span><span>12월</span></div>
+        </div>
+        <!-- 12-month compact grid -->
+        <div class="yr-grid">
+          <div class="yr-month"><div class="yr-month-nm">1월</div><div class="yr-ms" style="background:#93c5fd;width:100%;"></div><div class="yr-ms" style="background:#86efac;width:60%;"></div></div>
+          <div class="yr-month"><div class="yr-month-nm">2월</div><div class="yr-ms" style="background:#60a5fa;width:100%;"></div><div class="yr-ms" style="background:#4ade80;width:80%;"></div></div>
+          <div class="yr-month"><div class="yr-month-nm">3월</div><div class="yr-ms" style="background:#3b82f6;width:100%;"></div><div class="yr-ms" style="background:#4ade80;width:100%;"></div><div class="yr-ms" style="background:#fde68a;width:30%;"></div></div>
+          <div class="yr-month" style="border-color:#0891b2;box-shadow:0 0 0 2px rgba(8,145,178,0.18);"><div class="yr-month-nm" style="color:#0891b2;">4월 ★</div><div class="yr-ms" style="background:#3b82f6;width:100%;"></div><div class="yr-ms" style="background:#10b981;width:100%;"></div><div class="yr-ms" style="background:#f59e0b;width:50%;"></div></div>
+          <div class="yr-month"><div class="yr-month-nm">5월</div><div class="yr-ms" style="background:#bfdbfe;width:100%;"></div><div class="yr-ms" style="background:#bbf7d0;width:100%;"></div><div class="yr-ms" style="background:#fde68a;width:70%;"></div></div>
+          <div class="yr-month"><div class="yr-month-nm">6월</div><div class="yr-ms" style="background:#dbeafe;width:100%;"></div><div class="yr-ms" style="background:#dcfce7;width:100%;"></div><div class="yr-ms" style="background:#fef3c7;width:90%;"></div></div>
+          <div class="yr-month"><div class="yr-month-nm">7월</div><div class="yr-ms" style="background:#eff6ff;width:60%;"></div></div>
+          <div class="yr-month"><div class="yr-month-nm">8월</div><div class="yr-ms" style="background:#f0f9ff;width:40%;"></div></div>
+          <div class="yr-month"><div class="yr-month-nm">9월</div><div style="font-size:9px;color:#ef4444;font-weight:700;margin-bottom:2px;">🏆 TOEIC 시험</div></div>
+          <div class="yr-month"><div class="yr-month-nm">10월</div><div style="font-size:9px;color:#10b981;font-weight:700;margin-bottom:2px;">🏃 마라톤 대회</div></div>
+          <div class="yr-month"><div class="yr-month-nm">11월</div></div>
+          <div class="yr-month"><div class="yr-month-nm">12월</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box tip" style="margin-top:14px;"><div class="icon">💡</div><div class="content"><strong>Tip:</strong> Quarter 뷰에서 마일스톤을 탭하면 상세 설명과 태스크 목록을 확인할 수 있습니다. 지연된 마일스톤은 자동으로 리밸런싱되어 나머지 일정이 재조정됩니다.</div></div>
+  </div>
+
+  <!-- ━━ FEATURE B: VISION BOARD + TIMED POPUP ━━ -->
+  <div class="spotlight-item">
+    <div class="spotlight-item-hd">
+      <span class="unique-badge">Goalivo Only</span>
+      <h3>🖼️ 비전보드 & 시간별 팝업 알림</h3>
+      <p>목표 이미지를 최대 6장 등록하고, 지정한 시간마다 자동으로 팝업으로 보여줍니다. 매일 아침 비전을 확인하며 동기부여를 유지하세요.</p>
+    </div>
+
+    <!-- Vision Board Grid Mockup -->
+    <div class="spotlight-sub-title">🗂️ 비전보드 — 목표 이미지 갤러리 (최대 6장)</div>
+    <div class="mockup">
+      <div class="mockup-titlebar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <div class="mockup-url">goalivo.widegetlab.com — 비전보드</div>
+      </div>
+      <div class="mockup-body" style="padding:20px;background:#f8fafb;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:16px;font-weight:700;">🖼️ 나의 비전보드</div>
+          <div style="display:flex;gap:8px;">
+            <div style="padding:7px 14px;background:#0891b2;color:#fff;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">+ 이미지 추가</div>
+            <div style="padding:7px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#64748b;cursor:pointer;">⏰ 팝업 설정</div>
+          </div>
+        </div>
+        <div class="vb-grid">
+          <div class="vb-card" style="background-image:url('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=400&q=80');background-size:cover;background-position:center;">
+            <div class="vb-card-label">🏠 내 집 마련</div>
+          </div>
+          <div class="vb-card" style="background-image:url('https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=400&q=80');background-size:cover;background-position:center;">
+            <div class="vb-card-label">✈️ 세계 여행</div>
+          </div>
+          <div class="vb-card" style="background-image:url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=400&q=80');background-size:cover;background-position:center;">
+            <div class="vb-card-label">💪 건강한 몸</div>
+          </div>
+          <div class="vb-card" style="background-image:url('https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=400&q=80');background-size:cover;background-position:center;">
+            <div class="vb-card-label">💼 커리어 성장</div>
+          </div>
+          <div class="vb-card" style="background-image:url('https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=400&q=80');background-size:cover;background-position:center;">
+            <div class="vb-card-label">📚 TOEIC 900점</div>
+          </div>
+          <div class="vb-card" style="background:#e2e8f0;border:2px dashed #94a3b8;align-items:center;justify-content:center;">
+            <div class="vb-card-label" style="text-align:center;opacity:0.5;font-size:32px;color:#64748b;">+</div>
+          </div>
+        </div>
+        <!-- Popup time setting preview -->
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:#374151;">⏰ 팝업 알림 시간 설정</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div style="padding:6px 14px;background:#eff6ff;border:1px solid #3b82f6;border-radius:8px;font-size:12px;color:#1d4ed8;font-weight:600;">오전 7:30</div>
+            <div style="padding:6px 14px;background:#f0fdf4;border:1px solid #10b981;border-radius:8px;font-size:12px;color:#047857;font-weight:600;">오후 12:00</div>
+            <div style="padding:6px 14px;background:#fff;border:1px dashed #e2e8f0;border-radius:8px;font-size:12px;color:#94a3b8;">+ 시간 추가</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timed Popup Feature Mockup -->
+    <div class="spotlight-sub-title">⏰ 시간별 팝업 — 지정한 시각에 비전 이미지가 자동으로 나타납니다</div>
+    <div class="mockup">
+      <div class="mockup-titlebar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <div class="mockup-url">goalivo.widegetlab.com — 동기부여 팝업</div>
+      </div>
+      <div class="mockup-body">
+        <div class="vb-popup-wrap">
+          <!-- blurred bg hint -->
+          <div style="position:absolute;inset:0;border-radius:0;overflow:hidden;">
+            <div style="position:absolute;top:20px;left:20px;right:20px;height:60px;background:#fff;border-radius:10px;opacity:0.2;"></div>
+            <div style="position:absolute;top:100px;left:20px;right:120px;height:40px;background:#fff;border-radius:10px;opacity:0.15;"></div>
+          </div>
+          <div class="vb-popup">
+            <div class="vb-popup-hd">
+              <span style="font-size:14px;">⏰</span>
+              <span style="color:#0891b2;font-weight:700;font-size:12px;">오전 7:30 — 동기부여 타임</span>
+              <span style="margin-left:auto;cursor:pointer;color:#94a3b8;font-size:14px;">✕</span>
+            </div>
+            <div class="vb-popup-img" style="background-image:url('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=400&q=80');background-size:cover;background-position:center;"></div>
+            <div class="vb-popup-bd">
+              <h4 style="margin-bottom:4px;">내 집 마련</h4>
+              <p style="color:#64748b;font-size:12px;margin-bottom:10px;">당신의 꿈을 위해 오늘도 한 걸음!</p>
+              <div style="background:#f0f9ff;border-radius:8px;padding:8px;font-size:11px;color:#0369a1;margin-bottom:12px;text-align:left;">
+                🎯 TOEIC 900점 목표까지 <strong>D-56</strong> &nbsp;|&nbsp; 진행률 <strong>68%</strong>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <div style="flex:1;padding:8px;background:#0891b2;color:#fff;border-radius:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;">오늘 할 일 보기</div>
+                <div style="padding:8px 14px;background:#f1f5f9;color:#64748b;border-radius:8px;font-size:12px;cursor:pointer;">닫기</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info cards -->
+    <div class="vb-info-grid">
+      <div class="vb-info-card" style="background:#eff6ff;border-color:#3b82f6;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">⏰ 팝업 시간 설정</div>
+        <div style="font-size:12px;color:#64748b;">매일 오전/오후 원하는 시간에 알림. 아침 루틴 시작 전 비전 확인!</div>
+      </div>
+      <div class="vb-info-card" style="background:#f0fdf4;border-color:#10b981;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">🖼️ 이미지 순환 표시</div>
+        <div style="font-size:12px;color:#64748b;">6장의 이미지가 순환하며 매일 다른 비전으로 동기부여 유지</div>
+      </div>
+      <div class="vb-info-card" style="background:#fffbeb;border-color:#f59e0b;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">📊 D-Day & 진행률 연동</div>
+        <div style="font-size:12px;color:#64748b;">팝업에 목표 D-Day와 진행률이 함께 표시되어 현재 상황 즉시 파악</div>
+      </div>
+    </div>
+
+    <div class="highlight-box tip" style="margin-top:16px;"><div class="icon">💡</div><div class="content"><strong>추천 활용법:</strong> 기상 직후(오전 7:00~8:00)와 점심 시간(오후 12:00)에 팝업을 설정하면, 하루에 두 번 목표 비전을 확인하며 집중력을 유지할 수 있습니다.</div></div>
+  </div>
+
+
+  <!-- ━━ FEATURE C: TIMETABLE — ELON MUSK METHOD ━━ -->
+  <div class="spotlight-item" id="elon-timetable">
+    <div class="spotlight-item-hd">
+      <span class="unique-badge">Goalivo Only</span>
+      <h3>⏱️ 일론 머스크의 시간관리법 — 타임테이블</h3>
+      <p>테슬라·스페이스X CEO 일론 머스크는 하루를 5분 단위로 나눠 모든 시간을 계획합니다. Goalivo의 타임테이블로 세계 최고 CEO의 시간관리법을 실천하세요.</p>
+    </div>
+
+    <!-- Elon Musk Quote -->
+    <div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;padding:28px 32px;margin-bottom:20px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(251,191,36,0.15),transparent 70%);pointer-events:none;"></div>
+      <div style="font-size:36px;margin-bottom:12px;">🚀</div>
+      <blockquote style="font-size:clamp(16px,3vw,22px);font-weight:700;color:#fff;line-height:1.5;margin-bottom:16px;position:relative;z-index:1;">
+        "나는 하루를 <span style="color:#fbbf24;">5분 단위</span>로 계획한다.<br>모든 시간은 <span style="color:#fbbf24;">목표를 위해</span> 존재한다."
+      </blockquote>
+      <div style="font-size:13px;color:rgba(255,255,255,0.55);position:relative;z-index:1;">— 일론 머스크 (Elon Musk) · Tesla, SpaceX, X CEO</div>
+    </div>
+
+    <!-- Method explanation cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px;">
+      <div style="background:#fffbeb;border-radius:12px;padding:16px;border-left:4px solid #f59e0b;">
+        <div style="font-size:20px;margin-bottom:6px;">⏰</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Timeboxing</div>
+        <div style="font-size:12px;color:#64748b;">하루를 5~30분 단위의 "시간 박스"로 분할. 각 박스마다 하나의 작업만 집중 수행.</div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:12px;padding:16px;border-left:4px solid #10b981;">
+        <div style="font-size:20px;margin-bottom:6px;">📊</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">계획 vs 실제 추적</div>
+        <div style="font-size:12px;color:#64748b;">계획한 시간과 실제 사용한 시간을 비교해 낭비되는 시간을 발견하고 최적화.</div>
+      </div>
+      <div style="background:#eff6ff;border-radius:12px;padding:16px;border-left:4px solid #3b82f6;">
+        <div style="font-size:20px;margin-bottom:6px;">🎯</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px;">목표 연동 배분</div>
+        <div style="font-size:12px;color:#64748b;">각 시간 블록을 목표 카테고리(학습, 건강, 커리어)에 연결해 목표 달성에 직결.</div>
+      </div>
+    </div>
+
+    <!-- Timetable Mockup -->
+    <div class="spotlight-sub-title">📋 타임테이블 — 일일 시간 블록 관리 (Goalivo 구현)</div>
+    <div class="mockup">
+      <div class="mockup-titlebar">
+        <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
+        <div class="mockup-url">goalivo.widegetlab.com — 타임테이블</div>
+      </div>
+      <div class="mockup-body" style="padding:20px;background:#f8fafb;">
+        <!-- Header tabs -->
+        <div style="display:flex;gap:4px;margin-bottom:16px;background:#f1f5f9;border-radius:10px;padding:4px;">
+          <div style="flex:1;padding:8px;border-radius:8px;text-align:center;font-size:12px;font-weight:600;background:#fff;color:#0891b2;box-shadow:0 1px 3px rgba(0,0,0,0.08);">📋 일일 요약</div>
+          <div style="flex:1;padding:8px;border-radius:8px;text-align:center;font-size:12px;color:#94a3b8;">⏱️ 블록 뷰</div>
+          <div style="flex:1;padding:8px;border-radius:8px;text-align:center;font-size:12px;color:#94a3b8;">📊 주간 뷰</div>
+        </div>
+
+        <!-- Today summary -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;">2026년 5월 4일 (일) 타임박스</div>
+          <div style="font-size:11px;color:#0891b2;font-weight:600;">총 계획 10.5h</div>
+        </div>
+
+        <!-- Category rows -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+          <!-- Work -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:10px;height:10px;border-radius:50%;background:#3b82f6;"></div>
+                <span style="font-size:13px;font-weight:700;">💼 업무 / 공부</span>
+              </div>
+              <div style="font-size:11px;color:#64748b;">계획 <strong>6h</strong> · 실제 <strong style="color:#10b981;">5.5h</strong></div>
+            </div>
+            <div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:92%;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:4px;"></div>
+            </div>
+            <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
+              <span style="padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:4px;font-size:10px;font-weight:600;">TOEIC 단어 암기 30min</span>
+              <span style="padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:4px;font-size:10px;font-weight:600;">LC 집중 훈련 90min</span>
+              <span style="padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:4px;font-size:10px;font-weight:600;">포트폴리오 작업 2h</span>
+            </div>
+          </div>
+          <!-- Health -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:10px;height:10px;border-radius:50%;background:#10b981;"></div>
+                <span style="font-size:13px;font-weight:700;">🏃 건강 / 운동</span>
+              </div>
+              <div style="font-size:11px;color:#64748b;">계획 <strong>1h</strong> · 실제 <strong style="color:#10b981;">1h</strong> ✓</div>
+            </div>
+            <div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:100%;background:linear-gradient(90deg,#10b981,#34d399);border-radius:4px;"></div>
+            </div>
+          </div>
+          <!-- Rest -->
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:10px;height:10px;border-radius:50%;background:#f59e0b;"></div>
+                <span style="font-size:13px;font-weight:700;">🍽️ 식사 / 휴식</span>
+              </div>
+              <div style="font-size:11px;color:#64748b;">계획 <strong>1.5h</strong> · 실제 <strong style="color:#ef4444;">2h ▲</strong></div>
+            </div>
+            <div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:100%;background:linear-gradient(90deg,#f59e0b,#fcd34d);border-radius:4px;position:relative;">
+                <div style="position:absolute;right:0;top:0;height:100%;width:25%;background:#ef4444;opacity:0.6;"></div>
+              </div>
+            </div>
+            <div style="font-size:10px;color:#ef4444;margin-top:4px;font-weight:600;">⚠️ 30분 초과 — 내일 업무 블록에서 보완 추천</div>
+          </div>
+        </div>
+
+        <!-- Time block strip (mini visualization) -->
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;">⏱️ 오늘 시간 블록 (5분 단위)</div>
+          <div style="display:flex;gap:2px;align-items:flex-end;height:32px;">
+            <div style="flex:1;height:100%;background:#dbeafe;border-radius:2px;" title="6:00 기상/루틴"></div>
+            <div style="flex:1;height:90%;background:#dcfce7;border-radius:2px;" title="7:00 운동"></div>
+            <div style="flex:3;height:100%;background:#3b82f6;border-radius:2px;" title="8:30 TOEIC 공부"></div>
+            <div style="flex:1;height:60%;background:#fef3c7;border-radius:2px;" title="10:30 휴식"></div>
+            <div style="flex:4;height:100%;background:#3b82f6;border-radius:2px;" title="11:00 포트폴리오"></div>
+            <div style="flex:2;height:70%;background:#fef3c7;border-radius:2px;" title="13:00 점심"></div>
+            <div style="flex:3;height:95%;background:#3b82f6;border-radius:2px;" title="14:00 LC 훈련"></div>
+            <div style="flex:1;height:50%;background:#fef3c7;border-radius:2px;" title="16:30 휴식"></div>
+            <div style="flex:2;height:90%;background:#8b5cf6;border-radius:2px;" title="17:00 독서"></div>
+            <div style="flex:2;height:70%;background:#fef3c7;border-radius:2px;" title="18:30 저녁"></div>
+            <div style="flex:2;height:80%;background:#dcfce7;border-radius:2px;" title="20:00 산책"></div>
+            <div style="flex:1;height:60%;background:#e0e7ff;border-radius:2px;" title="21:30 복기"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:#94a3b8;">
+            <span>6:00</span><span>9:00</span><span>12:00</span><span>15:00</span><span>18:00</span><span>21:30</span>
+          </div>
+          <!-- Legend -->
+          <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:4px;font-size:10px;"><div style="width:10px;height:10px;border-radius:2px;background:#3b82f6;"></div>업무/공부</div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:10px;"><div style="width:10px;height:10px;border-radius:2px;background:#dcfce7;border:1px solid #10b981;"></div>운동/건강</div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:10px;"><div style="width:10px;height:10px;border-radius:2px;background:#fef3c7;border:1px solid #f59e0b;"></div>식사/휴식</div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:10px;"><div style="width:10px;height:10px;border-radius:2px;background:#8b5cf6;"></div>자기계발</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box tip" style="margin-top:14px;"><div class="icon">🚀</div><div class="content"><strong>머스크처럼 시작하기:</strong> 오늘 아침 Goalivo 타임테이블에서 하루 시간을 카테고리별로 미리 배분하세요. 저녁에 계획 vs 실제를 비교하면 낭비 시간을 발견하고 내일을 더 효율적으로 설계할 수 있습니다.</div></div>
+  </div>
+
+</div>
+<!-- ★ END SPOTLIGHT ★ -->
+
+<!-- SECTION 01: Overview -->
 <section class="section" id="overview">
   <span class="section-badge">01</span>
-  <h2>Goalivo란?</h2>
-  <p class="section-desc">
-    Goalivo는 <strong>목표 달성에 특화된 타임라인 캘린더</strong>입니다.
-    단순히 일정을 기록하는 것을 넘어, 목표를 설정하면 <strong>AI가 역산</strong>해서
-    마일스톤과 일정을 자동으로 만들어 줍니다.
-  </p>
+  <h2 data-i18n="s01_title">Goalivo란?</h2>
+  <p class="section-desc" data-i18n="s01_desc">Goalivo는 목표 달성에 특화된 타임라인 캘린더입니다. 단순히 일정을 기록하는 것을 넘어, 목표를 설정하면 AI가 역산해서 마일스톤과 일정을 자동으로 만들어 줍니다.</p>
   <div class="feature-grid">
-    <div class="feature-card">
-      <h4>🎯 목표 중심 설계</h4>
-      <p>D-Day 카운트다운, 주간 시간 할당, 진행률 추적까지 목표 달성에 필요한 모든 것</p>
-    </div>
-    <div class="feature-card">
-      <h4>🤖 AI 역산 & 리포트</h4>
-      <p>목표를 입력하면 AI가 마일스톤을 생성하고, 현재 수준에 맞는 맞춤형 꿀팁 리포트 제공</p>
-    </div>
-    <div class="feature-card">
-      <h4>📅 8가지 뷰 모드</h4>
-      <p>Day부터 10 Years까지 — 하루 일과부터 인생 계획까지 한눈에</p>
-    </div>
-    <div class="feature-card">
-      <h4>⏰ 타임테이블 & 루틴</h4>
-      <p>10분 단위 시간 블록과 반복 루틴으로 하루를 체계적으로 관리</p>
-    </div>
-    <div class="feature-card">
-      <h4>🎨 5가지 테마 스킨</h4>
-      <p>Midnight, Keepsake, Archivist, Aurora, Obsidian — 취향에 맞는 디자인</p>
-    </div>
-    <div class="feature-card">
-      <h4>🌐 클라우드 동기화</h4>
-      <p>어디서든 로그인하면 모든 기기에서 데이터 동기화</p>
-    </div>
+    <div class="feature-card"><h4 data-i18n="s01_f1_t">🎯 목표 중심 설계</h4><p data-i18n="s01_f1_d">D-Day 카운트다운, 주간 시간 할당, 진행률 추적까지 목표 달성에 필요한 모든 것</p></div>
+    <div class="feature-card"><h4 data-i18n="s01_f2_t">🤖 AI 역산 & 리포트</h4><p data-i18n="s01_f2_d">목표를 입력하면 AI가 마일스톤을 생성하고, 현재 수준에 맞는 맞춤형 꿀팁 리포트 제공</p></div>
+    <div class="feature-card"><h4 data-i18n="s01_f3_t">📅 8가지 뷰 모드</h4><p data-i18n="s01_f3_d">Day부터 10 Years까지 — 하루 일과부터 인생 계획까지 한눈에</p></div>
+    <div class="feature-card"><h4 data-i18n="s01_f4_t">⏰ 타임테이블 & 루틴</h4><p data-i18n="s01_f4_d">10분 단위 시간 블록과 반복 루틴으로 하루를 체계적으로 관리</p></div>
+    <div class="feature-card"><h4 data-i18n="s01_f5_t">🎨 5가지 테마 스킨</h4><p data-i18n="s01_f5_d">Midnight, Keepsake, Archivist, Aurora, Obsidian — 취향에 맞는 디자인</p></div>
+    <div class="feature-card"><h4 data-i18n="s01_f6_t">🌐 클라우드 동기화</h4><p data-i18n="s01_f6_d">어디서든 로그인하면 모든 기기에서 데이터 동기화</p></div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 02 ═══════════════════════ -->
+<!-- SECTION 02: Getting Started -->
 <section class="section" id="start">
   <span class="section-badge">02</span>
-  <h2>시작하기</h2>
-  <p class="section-desc">3단계만에 Goalivo를 시작할 수 있습니다.</p>
-
+  <h2 data-i18n="s02_title">시작하기</h2>
+  <p class="section-desc" data-i18n="s02_desc">3단계만에 Goalivo를 시작할 수 있습니다.</p>
   <div class="steps">
-    <div class="step">
-      <div class="step-content">
-        <h4>회원가입 또는 Google 로그인</h4>
-        <p>이메일로 간단히 가입하거나, Google 계정으로 바로 시작하세요. 로그인하면 모든 기기에서 데이터가 동기화됩니다.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-content">
-        <h4>첫 번째 목표 만들기</h4>
-        <p>좌측 사이드바의 <strong>+ 추가</strong> 버튼을 눌러 달성하고 싶은 목표를 입력하세요. 목표일, 필요 시간, 카테고리를 설정합니다.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-content">
-        <h4>AI가 계획 세워주기</h4>
-        <p>목표를 저장하면 AI가 마일스톤을 자동으로 생성하고, 캘린더에 일정이 배치됩니다. 리포트 탭에서 맞춤형 꿀팁도 확인하세요!</p>
-      </div>
-    </div>
+    <div class="step"><div class="step-content"><h4 data-i18n="s02_step1_t">회원가입 또는 Google 로그인</h4><p data-i18n="s02_step1_d">이메일로 간단히 가입하거나, Google 계정으로 바로 시작하세요.</p></div></div>
+    <div class="step"><div class="step-content"><h4 data-i18n="s02_step2_t">첫 번째 목표 만들기</h4><p data-i18n="s02_step2_d">좌측 사이드바의 + 추가 버튼을 눌러 달성하고 싶은 목표를 입력하세요.</p></div></div>
+    <div class="step"><div class="step-content"><h4 data-i18n="s02_step3_t">AI가 계획 세워주기</h4><p data-i18n="s02_step3_d">목표를 저장하면 AI가 마일스톤을 자동으로 생성하고, 캘린더에 일정이 배치됩니다.</p></div></div>
   </div>
-
-  <!-- 가입 화면 Mockup -->
   <div class="mockup">
-    <div class="mockup-titlebar">
-      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <div class="mockup-url">goalivo.widegetlab.com</div>
-    </div>
+    <div class="mockup-titlebar"><div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div><div class="mockup-url">goalivo.widegetlab.com</div></div>
     <div class="mockup-body" style="display:flex;align-items:center;justify-content:center;padding:40px;background:linear-gradient(135deg,#f0f9ff,#ecfdf5);">
       <div style="background:#fff;border-radius:16px;padding:32px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.08);text-align:center;">
         <div style="font-size:32px;margin-bottom:8px;">🎯</div>
         <div style="font-size:20px;font-weight:800;color:#0891b2;margin-bottom:4px;">Goalivo</div>
-        <div style="font-size:12px;color:#94a3b8;margin-bottom:24px;">목표 달성용 타임라인 캘린더</div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:24px;" data-i18n="mock_subtitle">목표 달성용 타임라인 캘린더</div>
         <div style="text-align:left;">
-          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">이메일</div>
+          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;" data-i18n="mock_email">이메일</div>
           <div style="padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#94a3b8;margin-bottom:12px;">your@email.com</div>
-          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">비밀번호</div>
+          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;" data-i18n="mock_pw">비밀번호</div>
           <div style="padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#94a3b8;margin-bottom:20px;">••••••••</div>
-          <div style="padding:12px;background:#0891b2;color:#fff;border-radius:8px;text-align:center;font-weight:700;font-size:14px;margin-bottom:12px;">회원가입</div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-            <div style="flex:1;height:1px;background:#e2e8f0;"></div>
-            <div style="font-size:11px;color:#94a3b8;">또는</div>
-            <div style="flex:1;height:1px;background:#e2e8f0;"></div>
-          </div>
+          <div style="padding:12px;background:#0891b2;color:#fff;border-radius:8px;text-align:center;font-weight:700;font-size:14px;margin-bottom:12px;" data-i18n="mock_signup">회원가입</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;"><div style="flex:1;height:1px;background:#e2e8f0;"></div><div style="font-size:11px;color:#94a3b8;" data-i18n="mock_or">또는</div><div style="flex:1;height:1px;background:#e2e8f0;"></div></div>
           <div style="padding:12px;border:1px solid #e2e8f0;border-radius:8px;text-align:center;font-size:13px;font-weight:600;color:#334155;display:flex;align-items:center;justify-content:center;gap:8px;">
             <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            Google 계정으로 시작
+            <span data-i18n="mock_google">Google 계정으로 시작</span>
           </div>
         </div>
       </div>
@@ -387,60 +788,29 @@ kbd{display:inline-block;padding:2px 6px;border:1px solid #d1d5db;border-radius:
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 03 ═══════════════════════ -->
+<!-- SECTION 03: Calendar -->
 <section class="section" id="calendar">
   <span class="section-badge">03</span>
-  <h2>캘린더 뷰</h2>
-  <p class="section-desc">
-    Goalivo는 <strong>8가지 뷰 모드</strong>를 제공합니다. 하루 단위부터 10년 단위까지
-    자유롭게 전환하며 일정을 확인하세요.
-  </p>
-
-  <!-- Calendar Mockup -->
+  <h2 data-i18n="s03_title">캘린더 뷰</h2>
+  <p class="section-desc" data-i18n="s03_desc">Goalivo는 8가지 뷰 모드를 제공합니다. 하루 단위부터 10년 단위까지 자유롭게 전환하며 일정을 확인하세요.</p>
   <div class="mockup">
-    <div class="mockup-titlebar">
-      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <div class="mockup-url">goalivo.widegetlab.com — 캘린더</div>
-    </div>
+    <div class="mockup-titlebar"><div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div><div class="mockup-url" data-i18n="mock_cal_url">goalivo.widegetlab.com — 캘린더</div></div>
     <div class="mockup-body">
       <div class="mock-app">
-        <!-- Sidebar -->
         <div class="mock-sidebar">
-          <div class="mock-sidebar-title">오늘 할 일 <span style="background:#0891b2;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px;">3</span></div>
-          <div class="mock-sidebar-item" style="background:#ecfdf5;border-left:3px solid #10b981;">
-            <span style="font-size:12px;">✅</span> TOEIC 단어 50개
-          </div>
-          <div class="mock-sidebar-item" style="border-left:3px solid transparent;">
-            <span style="font-size:12px;">⬜</span> 포트폴리오 수정
-          </div>
-          <div class="mock-sidebar-item" style="border-left:3px solid transparent;">
-            <span style="font-size:12px;">⬜</span> 러닝 5km
-          </div>
+          <div class="mock-sidebar-title" data-i18n="mock_today_tasks">오늘 할 일 <span style="background:#0891b2;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;">3</span></div>
+          <div class="mock-sidebar-item" style="background:#ecfdf5;border-left:3px solid #10b981;"><span style="font-size:12px;">✅</span> <span data-i18n="mock_task1">TOEIC 단어 50개</span></div>
+          <div class="mock-sidebar-item" style="border-left:3px solid transparent;"><span style="font-size:12px;">⬜</span> <span data-i18n="mock_task2">포트폴리오 수정</span></div>
+          <div class="mock-sidebar-item" style="border-left:3px solid transparent;"><span style="font-size:12px;">⬜</span> <span data-i18n="mock_task3">러닝 5km</span></div>
           <div style="height:20px;"></div>
-          <div class="mock-sidebar-title">목표 목록</div>
-          <div class="mock-sidebar-item" style="background:#eff6ff;border-radius:8px;">
-            <span class="dot" style="background:#3b82f6;"></span> TOEIC 900점
-            <span style="font-size:10px;color:#94a3b8;margin-left:auto;">D-89</span>
-          </div>
-          <div class="mock-sidebar-item">
-            <span class="dot" style="background:#10b981;"></span> 마라톤 완주
-            <span style="font-size:10px;color:#94a3b8;margin-left:auto;">D-142</span>
-          </div>
-          <div class="mock-sidebar-item">
-            <span class="dot" style="background:#f59e0b;"></span> 포트폴리오 제작
-            <span style="font-size:10px;color:#94a3b8;margin-left:auto;">D-45</span>
-          </div>
-          <div style="margin-top:12px;padding:8px 10px;background:#0891b2;color:#fff;border-radius:8px;text-align:center;font-size:12px;font-weight:600;">+ 추가</div>
+          <div class="mock-sidebar-title" data-i18n="mock_goal_list">목표 목록</div>
+          <div class="mock-sidebar-item" style="background:#eff6ff;border-radius:8px;"><span class="dot" style="background:#3b82f6;"></span> <span data-i18n="mock_g1">TOEIC 900점</span> <span style="font-size:10px;color:#94a3b8;margin-left:auto;">D-89</span></div>
+          <div class="mock-sidebar-item"><span class="dot" style="background:#10b981;"></span> <span data-i18n="mock_g2">마라톤 완주</span> <span style="font-size:10px;color:#94a3b8;margin-left:auto;">D-142</span></div>
+          <div class="mock-sidebar-item"><span class="dot" style="background:#f59e0b;"></span> <span data-i18n="mock_g3">포트폴리오 제작</span> <span style="font-size:10px;color:#94a3b8;margin-left:auto;">D-45</span></div>
         </div>
-        <!-- Main -->
         <div class="mock-main">
           <div class="mock-header">
-            <div class="mock-header-title">
-              <span style="cursor:pointer;">◀</span>
-              2026.7월
-              <span style="cursor:pointer;">▶</span>
-            </div>
+            <div class="mock-header-title"><span>◀</span> <span data-i18n="mock_month">2026.7월</span> <span>▶</span></div>
             <div style="display:flex;gap:4px;">
               <span style="padding:4px 10px;border-radius:6px;font-size:11px;color:#94a3b8;">Day</span>
               <span style="padding:4px 10px;border-radius:6px;font-size:11px;color:#94a3b8;">Week</span>
@@ -453,1012 +823,619 @@ kbd{display:inline-block;padding:2px 6px;border:1px solid #d1d5db;border-radius:
             </div>
           </div>
           <div class="mock-cal-grid">
-            <div class="mock-cal-header">일</div><div class="mock-cal-header">월</div><div class="mock-cal-header">화</div><div class="mock-cal-header">수</div><div class="mock-cal-header">목</div><div class="mock-cal-header">금</div><div class="mock-cal-header">토</div>
-            <!-- Row 1 -->
+            <div class="mock-cal-header" data-i18n="d_sun">일</div><div class="mock-cal-header" data-i18n="d_mon">월</div><div class="mock-cal-header" data-i18n="d_tue">화</div><div class="mock-cal-header" data-i18n="d_wed">수</div><div class="mock-cal-header" data-i18n="d_thu">목</div><div class="mock-cal-header" data-i18n="d_fri">금</div><div class="mock-cal-header" data-i18n="d_sat">토</div>
             <div class="mock-cal-cell"><div class="day sun">29</div></div>
             <div class="mock-cal-cell"><div class="day">30</div></div>
-            <div class="mock-cal-cell"><div class="day">1</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;">TOEIC 모의고사</div></div>
+            <div class="mock-cal-cell"><div class="day">1</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;" data-i18n="mock_ev1">TOEIC 모의고사</div></div>
             <div class="mock-cal-cell"><div class="day">2</div></div>
-            <div class="mock-cal-cell"><div class="day">3</div><div class="mock-event" style="background:#dcfce7;color:#166534;">러닝 10km</div></div>
+            <div class="mock-cal-cell"><div class="day">3</div><div class="mock-event" style="background:#dcfce7;color:#166534;" data-i18n="mock_ev2">러닝 10km</div></div>
             <div class="mock-cal-cell"><div class="day">4</div></div>
-            <div class="mock-cal-cell"><div class="day sat">5</div><div class="mock-event" style="background:#fef3c7;color:#92400e;">포트폴리오 리뷰</div></div>
-            <!-- Row 2 -->
+            <div class="mock-cal-cell"><div class="day sat">5</div><div class="mock-event" style="background:#fef3c7;color:#92400e;" data-i18n="mock_ev3">포트폴리오 리뷰</div></div>
             <div class="mock-cal-cell"><div class="day sun">6</div></div>
-            <div class="mock-cal-cell"><div class="day">7</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;">영어 스터디</div></div>
+            <div class="mock-cal-cell"><div class="day">7</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;" data-i18n="mock_ev4">영어 스터디</div></div>
             <div class="mock-cal-cell"><div class="day">8</div></div>
-            <div class="mock-cal-cell"><div class="day">9</div><div class="mock-event" style="background:#e0e7ff;color:#3730a3;">팀 미팅</div><div class="mock-event" style="background:#dcfce7;color:#166534;">5km 러닝</div></div>
-            <div class="mock-cal-cell"><div class="day today">10</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;">단어 암기 50개</div></div>
+            <div class="mock-cal-cell"><div class="day">9</div><div class="mock-event" style="background:#e0e7ff;color:#3730a3;" data-i18n="mock_ev5">팀 미팅</div><div class="mock-event" style="background:#dcfce7;color:#166534;" data-i18n="mock_ev6">5km 러닝</div></div>
+            <div class="mock-cal-cell"><div class="day today">10</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;" data-i18n="mock_ev7">단어 암기 50개</div></div>
             <div class="mock-cal-cell"><div class="day">11</div></div>
-            <div class="mock-cal-cell"><div class="day sat">12</div><div class="mock-event" style="background:#fef3c7;color:#92400e;">디자인 완성</div></div>
-            <!-- Row 3 -->
+            <div class="mock-cal-cell"><div class="day sat">12</div><div class="mock-event" style="background:#fef3c7;color:#92400e;" data-i18n="mock_ev8">디자인 완성</div></div>
             <div class="mock-cal-cell"><div class="day sun">13</div></div>
-            <div class="mock-cal-cell"><div class="day">14</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;">LC 집중 훈련</div></div>
-            <div class="mock-cal-cell"><div class="day">15</div><div class="mock-event" style="background:#fce7f3;color:#9d174d;">마감: M1</div></div>
+            <div class="mock-cal-cell"><div class="day">14</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;" data-i18n="mock_ev9">LC 집중 훈련</div></div>
+            <div class="mock-cal-cell"><div class="day">15</div><div class="mock-event" style="background:#fce7f3;color:#9d174d;" data-i18n="mock_ev10">마감: M1</div></div>
             <div class="mock-cal-cell"><div class="day">16</div></div>
-            <div class="mock-cal-cell"><div class="day">17</div><div class="mock-event" style="background:#dcfce7;color:#166534;">하프 마라톤</div></div>
+            <div class="mock-cal-cell"><div class="day">17</div><div class="mock-event" style="background:#dcfce7;color:#166534;" data-i18n="mock_ev11">하프 마라톤</div></div>
             <div class="mock-cal-cell"><div class="day">18</div></div>
             <div class="mock-cal-cell"><div class="day sat">19</div></div>
-            <!-- Row 4 -->
             <div class="mock-cal-cell"><div class="day sun">20</div></div>
             <div class="mock-cal-cell"><div class="day">21</div></div>
-            <div class="mock-cal-cell"><div class="day">22</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;">RC 파트5 특강</div></div>
+            <div class="mock-cal-cell"><div class="day">22</div><div class="mock-event" style="background:#dbeafe;color:#1e40af;" data-i18n="mock_ev12">RC 파트5 특강</div></div>
             <div class="mock-cal-cell"><div class="day">23</div></div>
             <div class="mock-cal-cell"><div class="day">24</div></div>
-            <div class="mock-cal-cell"><div class="day">25</div><div class="mock-event" style="background:#fef3c7;color:#92400e;">배포 리허설</div></div>
+            <div class="mock-cal-cell"><div class="day">25</div><div class="mock-event" style="background:#fef3c7;color:#92400e;" data-i18n="mock_ev13">배포 리허설</div></div>
             <div class="mock-cal-cell"><div class="day sat">26</div></div>
           </div>
         </div>
       </div>
     </div>
   </div>
-
-  <h3>8가지 뷰 모드</h3>
+  <h3 data-i18n="s03_views_title">8가지 뷰 모드</h3>
   <div class="feature-grid">
-    <div class="feature-card"><h4>📆 Day</h4><p>하루 일정을 시간대별로 상세히 확인</p></div>
-    <div class="feature-card"><h4>📅 Week</h4><p>한 주의 일정을 한눈에 조망</p></div>
-    <div class="feature-card"><h4>📊 Bi-week</h4><p>2주 단위로 넓게 보는 스케줄</p></div>
-    <div class="feature-card"><h4>🗓️ Month</h4><p>월간 캘린더 (기본 뷰)</p></div>
-    <div class="feature-card"><h4>📈 Quarter</h4><p>분기별 마일스톤 진행 현황</p></div>
-    <div class="feature-card"><h4>🗃️ Year</h4><p>1년 전체 목표 타임라인</p></div>
-    <div class="feature-card"><h4>🔭 5 Years</h4><p>중기 인생 계획 조망</p></div>
-    <div class="feature-card"><h4>🌌 10 Years</h4><p>장기 비전 타임라인</p></div>
+    <div class="feature-card"><h4>📆 Day</h4><p data-i18n="s03_v1">하루 일정을 시간대별로 상세히 확인</p></div>
+    <div class="feature-card"><h4>📅 Week</h4><p data-i18n="s03_v2">한 주의 일정을 한눈에 조망</p></div>
+    <div class="feature-card"><h4>📊 Bi-week</h4><p data-i18n="s03_v3">2주 단위로 넓게 보는 스케줄</p></div>
+    <div class="feature-card"><h4>🗓️ Month</h4><p data-i18n="s03_v4">월간 캘린더 (기본 뷰)</p></div>
+    <div class="feature-card"><h4>📈 Quarter</h4><p data-i18n="s03_v5">분기별 마일스톤 진행 현황</p></div>
+    <div class="feature-card"><h4>🗃️ Year</h4><p data-i18n="s03_v6">1년 전체 목표 타임라인</p></div>
+    <div class="feature-card"><h4>🔭 5 Years</h4><p data-i18n="s03_v7">중기 인생 계획 조망</p></div>
+    <div class="feature-card"><h4>🌌 10 Years</h4><p data-i18n="s03_v8">장기 비전 타임라인</p></div>
   </div>
-
-  <div class="highlight-box tip">
-    <div class="icon">💡</div>
-    <div class="content">
-      <strong>Tip:</strong> 월 뷰에서 날짜를 탭하면 Day 뷰로 바로 전환됩니다. 날짜를 길게 누르면 빠른 추가 시트가 열립니다.
-    </div>
-  </div>
+  <div class="highlight-box tip"><div class="icon">💡</div><div class="content" data-i18n="s03_tip"><strong>Tip:</strong> 월 뷰에서 날짜를 탭하면 Day 뷰로 바로 전환됩니다. 날짜를 길게 누르면 빠른 추가 시트가 열립니다.</div></div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 04 ═══════════════════════ -->
+<!-- SECTION 04: Goals -->
 <section class="section" id="goals">
   <span class="section-badge">04</span>
-  <h2>목표 관리 <span class="unique-badge">차별화 기능</span></h2>
-  <p class="section-desc">
-    Goalivo의 핵심은 <strong>목표 중심의 캘린더</strong>입니다.
-    목표를 만들면 D-Day 카운트다운, 진행률, 주간 시간 할당이 자동으로 계산됩니다.
-  </p>
-
-  <!-- Goal Cards Mockup -->
-  <div class="mockup">
-    <div class="mockup-titlebar">
-      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <div class="mockup-url">goalivo.widegetlab.com — 목표 관리</div>
-    </div>
-    <div class="mockup-body" style="padding:24px;background:#f8fafb;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <div style="font-size:20px;font-weight:800;">목표 관리</div>
-        <div style="padding:8px 16px;background:#0891b2;color:#fff;border-radius:8px;font-size:13px;font-weight:600;">+ 새 목표</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
-          <div style="font-size:28px;font-weight:800;color:#1e293b;">3</div>
-          <div style="font-size:12px;color:#94a3b8;">전체 목표</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
-          <div style="font-size:28px;font-weight:800;color:#3b82f6;">2</div>
-          <div style="font-size:12px;color:#94a3b8;">활성 목표</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
-          <div style="font-size:28px;font-weight:800;color:#10b981;">1</div>
-          <div style="font-size:12px;color:#94a3b8;">완료</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
-          <div style="font-size:28px;font-weight:800;color:#f59e0b;">127.5</div>
-          <div style="font-size:12px;color:#94a3b8;">총 투입 시간</div>
-        </div>
-      </div>
-      <!-- Goal Card 1 -->
-      <div class="mock-goal-card">
-        <div class="title">
-          <span class="dot" style="background:#3b82f6;width:10px;height:10px;border-radius:50;display:inline-block;"></span>
-          TOEIC 900점 달성
-          <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-left:auto;">D-89</span>
-        </div>
-        <div class="meta">
-          <span class="mock-badge" style="background:#dbeafe;color:#1e40af;">진행 중</span>
-          <span>학습</span>
-          <span>2026-04-01 → 2026-09-28</span>
-          <span>7개 마일스톤</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <div class="mock-progress" style="flex:1;"><div class="mock-progress-bar" style="width:42%;background:#3b82f6;"></div></div>
-          <span style="font-size:12px;font-weight:600;color:#3b82f6;">42%</span>
-          <span style="font-size:11px;color:#94a3b8;">84.0 / 200h</span>
-        </div>
-        <div style="font-size:11px;color:#94a3b8;margin-top:8px;">
-          • M1: 기초 문법 정리 ✅ &nbsp; • M2: LC 파트별 훈련 ✅ &nbsp; • M3: RC 파트5 집중 🔄 &nbsp; • M4: 실전 모의고사 ⏳
-        </div>
-      </div>
-      <!-- Goal Card 2 -->
-      <div class="mock-goal-card">
-        <div class="title">
-          <span class="dot" style="background:#10b981;width:10px;height:10px;border-radius:50%;display:inline-block;"></span>
-          마라톤 풀코스 완주
-          <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-left:auto;">D-142</span>
-        </div>
-        <div class="meta">
-          <span class="mock-badge" style="background:#dcfce7;color:#166534;">진행 중</span>
-          <span>건강</span>
-          <span>2026-05-01 → 2026-11-20</span>
-          <span>5개 마일스톤</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <div class="mock-progress" style="flex:1;"><div class="mock-progress-bar" style="width:18%;background:#10b981;"></div></div>
-          <span style="font-size:12px;font-weight:600;color:#10b981;">18%</span>
-          <span style="font-size:11px;color:#94a3b8;">27.0 / 150h</span>
-        </div>
-      </div>
-      <!-- Goal Card 3 -->
-      <div class="mock-goal-card" style="opacity:0.7;">
-        <div class="title">
-          <span class="dot" style="background:#f59e0b;width:10px;height:10px;border-radius:50%;display:inline-block;"></span>
-          포트폴리오 웹사이트 제작
-          <span style="background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-left:auto;">완료!</span>
-        </div>
-        <div class="meta">
-          <span class="mock-badge" style="background:#ecfdf5;color:#047857;">완료</span>
-          <span>프로젝트</span>
-          <span>2026-03-01 → 2026-06-15</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="mock-progress" style="flex:1;"><div class="mock-progress-bar" style="width:100%;background:#10b981;"></div></div>
-          <span style="font-size:12px;font-weight:600;color:#10b981;">100%</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <h3>목표 설정 항목</h3>
+  <h2><span data-i18n="s04_title">목표 관리</span> <span class="unique-badge" data-i18n="badge_unique">차별화 기능</span></h2>
+  <p class="section-desc" data-i18n="s04_desc">Goalivo의 핵심은 목표 중심의 캘린더입니다. 목표를 만들면 D-Day 카운트다운, 진행률, 주간 시간 할당이 자동으로 계산됩니다.</p>
   <div class="feature-grid">
-    <div class="feature-card"><h4>📝 기본 정보</h4><p>목표명, 설명, 시작일, 목표일 설정</p></div>
-    <div class="feature-card"><h4>⏱️ 시간 계획</h4><p>총 필요 시간과 주간 투입 시간을 설정하면 자동으로 일정 배분</p></div>
-    <div class="feature-card"><h4>🏷️ 카테고리</h4><p>학습, 커리어, 건강, 재무, 개인, 프로젝트 + 커스텀 카테고리</p></div>
-    <div class="feature-card"><h4>🎨 컬러 코딩</h4><p>8가지 색상 중 선택하여 캘린더에서 한눈에 구분</p></div>
-    <div class="feature-card"><h4>📆 활동 요일</h4><p>주중만, 주말만, 또는 원하는 요일만 선택 가능</p></div>
-    <div class="feature-card"><h4>📊 상태 관리</h4><p>예정 → 진행 중 → 완료 / 지연 / 보류 상태 전환</p></div>
+    <div class="feature-card"><h4 data-i18n="s04_f1_t">📝 기본 정보</h4><p data-i18n="s04_f1_d">목표명, 설명, 시작일, 목표일 설정</p></div>
+    <div class="feature-card"><h4 data-i18n="s04_f2_t">⏱️ 시간 계획</h4><p data-i18n="s04_f2_d">총 필요 시간과 주간 투입 시간을 설정하면 자동으로 일정 배분</p></div>
+    <div class="feature-card"><h4 data-i18n="s04_f3_t">🏷️ 카테고리</h4><p data-i18n="s04_f3_d">학습, 커리어, 건강, 재무, 개인, 프로젝트 + 커스텀 카테고리</p></div>
+    <div class="feature-card"><h4 data-i18n="s04_f4_t">🎨 컬러 코딩</h4><p data-i18n="s04_f4_d">8가지 색상 중 선택하여 캘린더에서 한눈에 구분</p></div>
+    <div class="feature-card"><h4 data-i18n="s04_f5_t">📆 활동 요일</h4><p data-i18n="s04_f5_d">주중만, 주말만, 또는 원하는 요일만 선택 가능</p></div>
+    <div class="feature-card"><h4 data-i18n="s04_f6_t">📊 상태 관리</h4><p data-i18n="s04_f6_d">예정 → 진행 중 → 완료 / 지연 / 보류 상태 전환</p></div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 05 ═══════════════════════ -->
+<!-- SECTION 05: Reverse Calculation -->
 <section class="section" id="reverse">
   <span class="section-badge">05</span>
-  <h2>목표 역산 기능 <span class="unique-badge">Goalivo만의 기능</span></h2>
-  <p class="section-desc">
-    일반 캘린더는 일정을 "기록"하지만, Goalivo는 목표에서 <strong>역산</strong>합니다.<br>
-    "언제까지 달성할래?"를 입력하면 → 지금부터 무엇을 해야 하는지 자동으로 계산합니다.
-  </p>
-
-  <div class="highlight-box info">
-    <div class="icon">🔄</div>
-    <div class="content">
-      <strong>역산이란?</strong> 목표 기한과 필요한 총 시간을 입력하면, Goalivo가 남은 기간을 주 단위로 나눠
-      하루에 얼마나 투입해야 하는지 자동으로 계산합니다. 마일스톤이 지연되면 <strong>자동 리밸런싱</strong>으로
-      나머지 일정이 재조정됩니다.
-    </div>
-  </div>
-
-  <!-- 역산 프로세스 -->
+  <h2><span data-i18n="s05_title">목표 역산 기능</span> <span class="unique-badge">Goalivo Only</span></h2>
+  <p class="section-desc" data-i18n="s05_desc">일반 캘린더는 일정을 "기록"하지만, Goalivo는 목표에서 역산합니다. "언제까지 달성할래?"를 입력하면 → 지금부터 무엇을 해야 하는지 자동으로 계산합니다.</p>
+  <div class="highlight-box info"><div class="icon">🔄</div><div class="content" data-i18n="s05_info"><strong>역산이란?</strong> 목표 기한과 필요한 총 시간을 입력하면, Goalivo가 남은 기간을 주 단위로 나눠 하루에 얼마나 투입해야 하는지 자동으로 계산합니다. 마일스톤이 지연되면 자동 리밸런싱으로 나머지 일정이 재조정됩니다.</div></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0;">
     <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:12px;padding:20px;text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">🎯</div>
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">1. 목표 입력</div>
-      <div style="font-size:12px;color:#64748b;">"TOEIC 900점"<br>목표일: 9월 28일<br>총 200시간 필요</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;" data-i18n="s05_step1_t">1. 목표 입력</div>
+      <div style="font-size:12px;color:#64748b;" data-i18n="s05_step1_d">"TOEIC 900점"<br>목표일: 9월 28일<br>총 200시간 필요</div>
     </div>
     <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:12px;padding:20px;text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">🧮</div>
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">2. AI 역산</div>
-      <div style="font-size:12px;color:#64748b;">남은 26주 ÷ 200시간<br>= 주 7.7시간<br>= 하루 약 1.1시간</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;" data-i18n="s05_step2_t">2. AI 역산</div>
+      <div style="font-size:12px;color:#64748b;" data-i18n="s05_step2_d">남은 26주 ÷ 200시간<br>= 주 7.7시간<br>= 하루 약 1.1시간</div>
     </div>
     <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:12px;padding:20px;text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">📋</div>
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">3. 마일스톤 생성</div>
-      <div style="font-size:12px;color:#64748b;">M1: 기초 문법 (3주)<br>M2: LC 훈련 (4주)<br>M3: RC 훈련 (4주)…</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;" data-i18n="s05_step3_t">3. 마일스톤 생성</div>
+      <div style="font-size:12px;color:#64748b;" data-i18n="s05_step3_d">M1: 기초 문법 (3주)<br>M2: LC 훈련 (4주)<br>M3: RC 훈련 (4주)...</div>
     </div>
     <div style="background:linear-gradient(135deg,#fce7f3,#fbcfe8);border-radius:12px;padding:20px;text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">📅</div>
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">4. 캘린더 배치</div>
-      <div style="font-size:12px;color:#64748b;">마일스톤별 일정이<br>캘린더에 자동 배치<br>진행률 실시간 추적</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;" data-i18n="s05_step4_t">4. 캘린더 배치</div>
+      <div style="font-size:12px;color:#64748b;" data-i18n="s05_step4_d">마일스톤별 일정이<br>캘린더에 자동 배치<br>진행률 실시간 추적</div>
     </div>
   </div>
-
-  <h3>자동 리밸런싱</h3>
-  <p style="font-size:14px;color:var(--text-dim);margin-bottom:16px;">
-    마일스톤이 예정보다 늦어지면? Goalivo가 나머지 마일스톤 일정을 자동으로 재조정합니다.
-    <strong>주간 긴급 리밸런스</strong> 모드도 있어서, 이번 주에 얼마나 더 집중해야 하는지 알려줍니다.
-  </p>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 06 ═══════════════════════ -->
+<!-- SECTION 06: Milestones -->
 <section class="section" id="milestones">
   <span class="section-badge">06</span>
-  <h2>마일스톤 & 태스크</h2>
-  <p class="section-desc">
-    목표를 달성 가능한 작은 단계로 쪼갭니다. AI가 자동 생성하거나 직접 만들 수 있습니다.
-  </p>
-
-  <!-- Milestone Mockup -->
-  <div class="mockup">
-    <div class="mockup-titlebar">
-      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <div class="mockup-url">목표: TOEIC 900점 달성 — 마일스톤</div>
-    </div>
-    <div class="mockup-body" style="padding:24px;background:#f8fafb;">
-      <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">TOEIC 900점 달성</div>
-      <div style="font-size:18px;font-weight:800;margin-bottom:20px;">마일스톤 관리</div>
-
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <!-- M1 -->
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">✓</div>
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;">M1: 기초 문법 정리</div>
-            <div style="font-size:11px;color:#94a3b8;">4/1 ~ 4/21 · 30시간 · 완료</div>
-          </div>
-          <div class="mock-progress" style="width:80px;"><div class="mock-progress-bar" style="width:100%;background:#10b981;"></div></div>
-          <span style="font-size:11px;font-weight:600;color:#10b981;">100%</span>
-        </div>
-        <!-- M2 -->
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">✓</div>
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;">M2: LC 파트별 훈련</div>
-            <div style="font-size:11px;color:#94a3b8;">4/22 ~ 5/19 · 35시간 · 완료</div>
-          </div>
-          <div class="mock-progress" style="width:80px;"><div class="mock-progress-bar" style="width:100%;background:#10b981;"></div></div>
-          <span style="font-size:11px;font-weight:600;color:#10b981;">100%</span>
-        </div>
-        <!-- M3 -->
-        <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">3</div>
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;">M3: RC 파트5 집중 훈련 🔥</div>
-            <div style="font-size:11px;color:#3b82f6;font-weight:600;">5/20 ~ 6/16 · 현재 진행 중</div>
-          </div>
-          <div class="mock-progress" style="width:80px;"><div class="mock-progress-bar" style="width:65%;background:#3b82f6;"></div></div>
-          <span style="font-size:11px;font-weight:600;color:#3b82f6;">65%</span>
-        </div>
-        <!-- M4~M7 -->
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;opacity:0.6;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">4</div>
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;">M4: 실전 모의고사 1차</div>
-            <div style="font-size:11px;color:#94a3b8;">6/17 ~ 7/14 · 40시간 · 예정</div>
-          </div>
-        </div>
-        <div style="text-align:center;font-size:12px;color:#94a3b8;padding:8px;">+ 3개 마일스톤 더 보기</div>
-      </div>
-    </div>
+  <h2><span data-i18n="s06_title">마일스톤 & 태스크</span> <span class="unique-badge">Goalivo Only</span></h2>
+  <p class="section-desc" data-i18n="s06_desc">목표를 달성 가능한 작은 단계로 쪼갭니다. AI가 자동 생성하거나 직접 만들 수 있습니다.</p>
+  <div class="feature-grid">
+    <div class="feature-card"><h4>🤖 AI 자동 생성</h4><p>목표를 저장하면 AI가 난이도·기간을 고려해 마일스톤을 자동으로 설계합니다.</p></div>
+    <div class="feature-card"><h4>✏️ 수동 생성 & 편집</h4><p>직접 마일스톤을 추가·수정하고 순서를 드래그로 변경할 수 있습니다.</p></div>
+    <div class="feature-card"><h4>⚡ 자동 리밸런싱</h4><p>마일스톤이 지연되면 남은 일정을 자동으로 재조정해 목표일을 유지합니다.</p></div>
+    <div class="feature-card"><h4>📊 Quarter/Year 뷰 연동</h4><p>마일스톤이 분기 뷰와 연간 뷰에 타임라인으로 시각화되어 한눈에 파악 가능합니다.</p></div>
   </div>
+  <div class="highlight-box info"><div class="icon">🔗</div><div class="content"><strong>Quarter & Year 뷰에서 확인:</strong> 상단 <a href="#spotlight">핵심 기능 하이라이트</a>에서 실제 마일스톤 뷰 화면을 미리 확인할 수 있습니다. 목표별 진행률이 컬러 바로 표시됩니다.</div></div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 07 ═══════════════════════ -->
+<!-- SECTION 07: AI Reporter -->
 <section class="section" id="ai">
   <span class="section-badge">07</span>
-  <h2>AI 리포터 <span class="unique-badge">차별화 기능</span></h2>
-  <p class="section-desc">
-    Goalivo에는 두 명의 AI 친구가 있습니다. <strong>Gio</strong>는 자료조사 전문, <strong>Coco</strong>는
-    현실적 코칭 전문. 목표에 맞는 꿀팁 리포트를 자동으로 생성합니다.
-  </p>
-
+  <h2><span data-i18n="s07_title">AI 리포터</span> <span class="unique-badge" data-i18n="badge_unique">차별화 기능</span></h2>
+  <p class="section-desc" data-i18n="s07_desc">Goalivo에는 두 명의 AI 친구가 있습니다. Gio는 자료조사 전문, Coco는 현실적 코칭 전문. 목표에 맞는 꿀팁 리포트를 자동으로 생성합니다.</p>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0;">
     <div style="background:linear-gradient(135deg,#eff6ff,#e0f2fe);border:2px solid #bae6fd;border-radius:16px;padding:24px;text-align:center;">
       <div style="font-size:36px;margin-bottom:8px;">🧠</div>
-      <div style="font-size:18px;font-weight:800;color:#0369a1;margin-bottom:4px;">Gio</div>
-      <div style="font-size:13px;color:#64748b;line-height:1.6;">자료조사를 잘하는 친구<br>최신 링크와 성공 후기를 수집해서<br>레퍼런스 중심의 리포트 제공</div>
+      <div style="font-size:18px;font-weight:800;color:#0369a1;">Gio</div>
+      <div style="font-size:13px;color:#64748b;line-height:1.6;" data-i18n="s07_gio">자료조사를 잘하는 친구<br>최신 링크와 성공 후기를 수집해서<br>레퍼런스 중심의 리포트 제공</div>
     </div>
     <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #86efac;border-radius:16px;padding:24px;text-align:center;">
       <div style="font-size:36px;margin-bottom:8px;">🎯</div>
-      <div style="font-size:18px;font-weight:800;color:#047857;margin-bottom:4px;">Coco</div>
-      <div style="font-size:13px;color:#64748b;line-height:1.6;">현실적으로 보정해주는 친구<br>내 수준에 맞게 팁을 다듬어<br>실행 가능한 조언을 제공</div>
-    </div>
-  </div>
-
-  <!-- AI Report Mockup -->
-  <div class="mock-ai">
-    <div class="mock-ai-title">🤖 AI 꿀팁 리포트 — TOEIC 900점 달성</div>
-    <div class="mock-ai-item">
-      <div class="icon">⚡</div>
-      <div class="content"><strong>Quick Win:</strong> 매일 출퇴근길 30분에 LC 파트3 쉐도잉을 하면 4주 안에 LC 점수 50점 이상 향상 가능</div>
-    </div>
-    <div class="mock-ai-item">
-      <div class="icon">📈</div>
-      <div class="content"><strong>Level-fit Plan:</strong> 현재 750점 수준에서는 RC 파트5 문법 유형을 하루 30문제씩 풀고 오답노트 작성이 가장 효율적</div>
-    </div>
-    <div class="mock-ai-item">
-      <div class="icon">👤</div>
-      <div class="content"><strong>Real People Tips:</strong> "저도 700점대에서 시작했는데, 단어장은 해커스 것보다 직접 오답에서 뽑은 게 효과적이었어요"</div>
-    </div>
-    <div class="mock-ai-item">
-      <div class="icon">🔗</div>
-      <div class="content"><strong>추천 리소스:</strong> ETS 공식 기출문제집, BBC Learning English 팟캐스트, YBM 모의고사 앱</div>
-    </div>
-    <div class="mock-ai-item">
-      <div class="icon">⚠️</div>
-      <div class="content"><strong>주의사항:</strong> 시험 2주 전부터는 새로운 문법 학습 대신 기출 복습에만 집중하세요. 새 유형에 시간을 쓰면 오히려 점수가 떨어질 수 있습니다.</div>
+      <div style="font-size:18px;font-weight:800;color:#047857;">Coco</div>
+      <div style="font-size:13px;color:#64748b;line-height:1.6;" data-i18n="s07_coco">현실적으로 보정해주는 친구<br>내 수준에 맞게 팁을 다듬어<br>실행 가능한 조언을 제공</div>
     </div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 08 ═══════════════════════ -->
+<!-- SECTION 08: Timetable -->
 <section class="section" id="timetable">
   <span class="section-badge">08</span>
-  <h2>타임테이블</h2>
-  <p class="section-desc">
-    하루 시간을 카테고리별로 관리합니다. 일일 요약, 10분 단위 블록, 주간 뷰 3가지 모드를 제공합니다.
-  </p>
-
-  <!-- Timetable Mockup -->
-  <div class="mockup">
-    <div class="mockup-titlebar">
-      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <div class="mockup-url">goalivo.widegetlab.com — 타임테이블</div>
-    </div>
-    <div class="mockup-body" style="padding:24px;background:#f8fafb;">
-      <div style="display:flex;gap:16px;margin-bottom:20px;">
-        <span style="padding:8px 16px;background:#0891b2;color:#fff;border-radius:8px;font-size:13px;font-weight:600;">일일 요약</span>
-        <span style="padding:8px 16px;font-size:13px;color:#94a3b8;font-weight:600;">일일 블록</span>
-        <span style="padding:8px 16px;font-size:13px;color:#94a3b8;font-weight:600;">주간 타임블록</span>
-      </div>
-      <div style="text-align:center;font-size:15px;font-weight:700;margin-bottom:20px;">2026-07-10 (금)</div>
-
-      <!-- Daily Summary -->
-      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
-        <div style="padding:16px;font-size:14px;font-weight:700;border-bottom:1px solid #e2e8f0;">📊 일일 시간 사용 요약</div>
-        <table style="width:100%;font-size:12px;border-collapse:collapse;">
-          <tr style="background:#f8fafb;">
-            <th style="padding:10px;text-align:left;font-weight:600;">카테고리</th>
-            <th style="padding:10px;text-align:center;">계획(분)</th>
-            <th style="padding:10px;text-align:center;">실제(분)</th>
-            <th style="padding:10px;text-align:center;">달성률</th>
-          </tr>
-          <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:10px;display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block;"></span> 딥워크/핵심업무</td>
-            <td style="padding:10px;text-align:center;">120</td>
-            <td style="padding:10px;text-align:center;">105</td>
-            <td style="padding:10px;text-align:center;color:#f59e0b;font-weight:600;">88%</td>
-          </tr>
-          <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:10px;"><span style="width:10px;height:10px;border-radius:50%;background:#8b5cf6;display:inline-block;margin-right:6px;"></span> 학습/자기개발</td>
-            <td style="padding:10px;text-align:center;">90</td>
-            <td style="padding:10px;text-align:center;">90</td>
-            <td style="padding:10px;text-align:center;color:#10b981;font-weight:600;">100%</td>
-          </tr>
-          <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:10px;"><span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;margin-right:6px;"></span> 운동/건강</td>
-            <td style="padding:10px;text-align:center;">60</td>
-            <td style="padding:10px;text-align:center;">45</td>
-            <td style="padding:10px;text-align:center;color:#f59e0b;font-weight:600;">75%</td>
-          </tr>
-          <tr style="background:#f8fafb;font-weight:700;">
-            <td style="padding:10px;">합계</td>
-            <td style="padding:10px;text-align:center;">270</td>
-            <td style="padding:10px;text-align:center;">240</td>
-            <td style="padding:10px;text-align:center;color:#3b82f6;">89%</td>
-          </tr>
-        </table>
-      </div>
-    </div>
-  </div>
-
+  <h2 data-i18n="s08_title">타임테이블</h2>
+  <p class="section-desc" data-i18n="s08_desc">하루 시간을 카테고리별로 관리합니다. 일일 요약, 10분 단위 블록, 주간 뷰 3가지 모드를 제공합니다.</p>
   <div class="feature-grid">
-    <div class="feature-card">
-      <h4>📋 일일 요약</h4>
-      <p>카테고리별 계획 시간 vs 실제 시간을 비교하고 달성률을 확인</p>
-    </div>
-    <div class="feature-card">
-      <h4>⏱️ 10분 단위 블록</h4>
-      <p>하루를 5/10/20/30/60분 단위로 쪼개서 시각적으로 시간 배분</p>
-    </div>
-    <div class="feature-card">
-      <h4>📊 주간 타임블록</h4>
-      <p>일주일치 시간 블록을 한눈에 보고 패턴을 파악</p>
-    </div>
+    <div class="feature-card"><h4 data-i18n="s08_f1_t">📋 일일 요약</h4><p data-i18n="s08_f1_d">카테고리별 계획 시간 vs 실제 시간을 비교하고 달성률을 확인</p></div>
+    <div class="feature-card"><h4 data-i18n="s08_f2_t">⏱️ 10분 단위 블록</h4><p data-i18n="s08_f2_d">하루를 5/10/20/30/60분 단위로 쪼개서 시각적으로 시간 배분</p></div>
+    <div class="feature-card"><h4 data-i18n="s08_f3_t">📊 주간 타임블록</h4><p data-i18n="s08_f3_d">일주일치 시간 블록을 한눈에 보고 패턴을 파악</p></div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 09 ═══════════════════════ -->
+<!-- SECTION 09: Routine -->
 <section class="section" id="routine">
   <span class="section-badge">09</span>
-  <h2>루틴 관리</h2>
-  <p class="section-desc">
-    매일 반복하는 습관을 루틴으로 등록하고 연속 달성일을 추적하세요. 팝업 알림으로 잊지 않게 도와줍니다.
-  </p>
-
-  <div class="mockup">
-    <div class="mockup-titlebar">
-      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <div class="mockup-url">goalivo.widegetlab.com — 루틴</div>
-    </div>
-    <div class="mockup-body" style="padding:24px;background:#f8fafb;">
-      <div style="font-size:18px;font-weight:800;margin-bottom:20px;">루틴 관리</div>
-
-      <!-- Routine items -->
-      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:14px;font-weight:700;">☀️ 아침 스트레칭 15분</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">매일 · 팝업 시간: 07:00</div>
-            <div style="font-size:12px;color:#10b981;font-weight:600;margin-top:4px;">🔥 연속 달성 14일</div>
-          </div>
-          <div style="display:flex;gap:6px;">
-            <div style="padding:6px 12px;background:#ecfdf5;color:#047857;border-radius:6px;font-size:11px;font-weight:600;">오늘 완료</div>
-          </div>
-        </div>
-      </div>
-
-      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:14px;font-weight:700;">📖 영어 독서 30분</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">월,화,수,목,금 · 팝업 시간: 22:00</div>
-            <div style="font-size:12px;color:#f59e0b;font-weight:600;margin-top:4px;">🔥 연속 달성 7일</div>
-          </div>
-          <div style="display:flex;gap:6px;">
-            <div style="padding:6px 12px;background:#eff6ff;color:#1e40af;border-radius:6px;font-size:11px;font-weight:600;">대기 중</div>
-          </div>
-        </div>
-      </div>
-
-      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:14px;font-weight:700;">💧 물 2L 마시기</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">매일 · 팝업 시간: 09:00, 14:00</div>
-            <div style="font-size:12px;color:#10b981;font-weight:600;margin-top:4px;">🔥 연속 달성 30일</div>
-          </div>
-          <div style="display:flex;gap:6px;">
-            <div style="padding:6px 12px;background:#ecfdf5;color:#047857;border-radius:6px;font-size:11px;font-weight:600;">오늘 완료</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <h2 data-i18n="s09_title">루틴 관리</h2>
+  <p class="section-desc" data-i18n="s09_desc">매일 반복하는 습관을 루틴으로 등록하고 연속 달성일을 추적하세요. 팝업 알림으로 잊지 않게 도와줍니다.</p>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 10 ═══════════════════════ -->
+<!-- SECTION 10: Reports -->
 <section class="section" id="reports">
   <span class="section-badge">10</span>
-  <h2>리포트 & 분석 <span class="unique-badge">차별화 기능</span></h2>
-  <p class="section-desc">
-    주간 계획 vs 실제, 체크인 추이, 목표별 번다운 차트 등 진행 상황을 시각적으로 분석합니다.
-  </p>
-
-  <div class="mockup">
-    <div class="mockup-titlebar">
-      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <div class="mockup-url">goalivo.widegetlab.com — 리포트</div>
-    </div>
-    <div class="mockup-body" style="padding:24px;background:#f8fafb;">
-      <div style="font-size:18px;font-weight:800;margin-bottom:20px;">리포트</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">
-          <div style="font-size:24px;font-weight:800;">42.5h</div>
-          <div style="font-size:11px;color:#94a3b8;">계획 시간</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">
-          <div style="font-size:24px;font-weight:800;color:#10b981;">38.2h</div>
-          <div style="font-size:11px;color:#94a3b8;">실제 투입</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">
-          <div style="font-size:24px;font-weight:800;color:#3b82f6;">90%</div>
-          <div style="font-size:11px;color:#94a3b8;">완료율 (18/20)</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">
-          <div style="font-size:24px;font-weight:800;color:#f59e0b;">2</div>
-          <div style="font-size:11px;color:#94a3b8;">달성 목표</div>
-        </div>
-      </div>
-      <!-- Chart mockup -->
-      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
-        <div style="font-size:14px;font-weight:700;margin-bottom:16px;">주간 계획 vs 실제 (최근 7일)</div>
-        <div style="display:flex;align-items:flex-end;gap:16px;height:120px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;">
-          <div style="flex:1;text-align:center;">
-            <div style="display:flex;gap:4px;justify-content:center;align-items:flex-end;height:100px;">
-              <div style="width:16px;background:#bfdbfe;border-radius:4px 4px 0 0;height:80px;"></div>
-              <div style="width:16px;background:#3b82f6;border-radius:4px 4px 0 0;height:72px;"></div>
-            </div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">월</div>
-          </div>
-          <div style="flex:1;text-align:center;">
-            <div style="display:flex;gap:4px;justify-content:center;align-items:flex-end;height:100px;">
-              <div style="width:16px;background:#bfdbfe;border-radius:4px 4px 0 0;height:60px;"></div>
-              <div style="width:16px;background:#3b82f6;border-radius:4px 4px 0 0;height:55px;"></div>
-            </div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">화</div>
-          </div>
-          <div style="flex:1;text-align:center;">
-            <div style="display:flex;gap:4px;justify-content:center;align-items:flex-end;height:100px;">
-              <div style="width:16px;background:#bfdbfe;border-radius:4px 4px 0 0;height:90px;"></div>
-              <div style="width:16px;background:#3b82f6;border-radius:4px 4px 0 0;height:85px;"></div>
-            </div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">수</div>
-          </div>
-          <div style="flex:1;text-align:center;">
-            <div style="display:flex;gap:4px;justify-content:center;align-items:flex-end;height:100px;">
-              <div style="width:16px;background:#bfdbfe;border-radius:4px 4px 0 0;height:70px;"></div>
-              <div style="width:16px;background:#3b82f6;border-radius:4px 4px 0 0;height:65px;"></div>
-            </div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">목</div>
-          </div>
-          <div style="flex:1;text-align:center;">
-            <div style="display:flex;gap:4px;justify-content:center;align-items:flex-end;height:100px;">
-              <div style="width:16px;background:#bfdbfe;border-radius:4px 4px 0 0;height:75px;"></div>
-              <div style="width:16px;background:#3b82f6;border-radius:4px 4px 0 0;height:50px;"></div>
-            </div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">금</div>
-          </div>
-          <div style="flex:1;text-align:center;">
-            <div style="display:flex;gap:4px;justify-content:center;align-items:flex-end;height:100px;">
-              <div style="width:16px;background:#bfdbfe;border-radius:4px 4px 0 0;height:40px;"></div>
-              <div style="width:16px;background:#3b82f6;border-radius:4px 4px 0 0;height:45px;"></div>
-            </div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">토</div>
-          </div>
-          <div style="flex:1;text-align:center;">
-            <div style="display:flex;gap:4px;justify-content:center;align-items:flex-end;height:100px;">
-              <div style="width:16px;background:#bfdbfe;border-radius:4px 4px 0 0;height:30px;"></div>
-              <div style="width:16px;background:#3b82f6;border-radius:4px 4px 0 0;height:35px;"></div>
-            </div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">일</div>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:center;gap:16px;margin-top:12px;">
-          <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;"><span style="width:10px;height:10px;border-radius:2px;background:#bfdbfe;display:inline-block;"></span> 계획</span>
-          <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;"><span style="width:10px;height:10px;border-radius:2px;background:#3b82f6;display:inline-block;"></span> 실제</span>
-        </div>
-      </div>
-    </div>
-  </div>
+  <h2><span data-i18n="s10_title">리포트 & 분석</span> <span class="unique-badge" data-i18n="badge_unique">차별화 기능</span></h2>
+  <p class="section-desc" data-i18n="s10_desc">주간 계획 vs 실제, 체크인 추이, 목표별 번다운 차트 등 진행 상황을 시각적으로 분석합니다.</p>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 11 ═══════════════════════ -->
+<!-- SECTION 11: Quick Add -->
 <section class="section" id="quickadd">
   <span class="section-badge">11</span>
-  <h2>빠른 추가</h2>
-  <p class="section-desc">
-    우하단의 <strong>+</strong> 버튼을 눌러 일정, 할 일, 기념일을 3초 안에 추가하세요.
-  </p>
+  <h2 data-i18n="s11_title">빠른 추가</h2>
+  <p class="section-desc" data-i18n="s11_desc">우하단의 + 버튼을 눌러 일정, 할 일, 기념일을 3초 안에 추가하세요.</p>
   <div class="feature-grid">
-    <div class="feature-card"><h4>📅 일정 (Schedule)</h4><p>날짜, 시간, 제목을 입력하면 캘린더에 시간 블록 생성</p></div>
-    <div class="feature-card"><h4>✅ 할 일 (Todo)</h4><p>오늘의 체크리스트에 즉시 태스크 추가</p></div>
-    <div class="feature-card"><h4>🎂 기념일 (Anniversary)</h4><p>생일, 기념일 등 반복되는 이벤트 등록</p></div>
+    <div class="feature-card"><h4 data-i18n="s11_f1_t">📅 일정 (Schedule)</h4><p data-i18n="s11_f1_d">날짜, 시간, 제목을 입력하면 캘린더에 시간 블록 생성</p></div>
+    <div class="feature-card"><h4 data-i18n="s11_f2_t">✅ 할 일 (Todo)</h4><p data-i18n="s11_f2_d">오늘의 체크리스트에 즉시 태스크 추가</p></div>
+    <div class="feature-card"><h4 data-i18n="s11_f3_t">🎂 기념일 (Anniversary)</h4><p data-i18n="s11_f3_d">생일, 기념일 등 반복되는 이벤트 등록</p></div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 12 ═══════════════════════ -->
+<!-- SECTION 12: Vision Board -->
 <section class="section" id="vision">
   <span class="section-badge">12</span>
-  <h2>비전보드 <span class="unique-badge">차별화 기능</span></h2>
-  <p class="section-desc">
-    달성하고 싶은 목표의 이미지를 최대 6장까지 업로드하고, 언제든 확인하며 동기부여를 유지하세요.
-  </p>
-
-  <div class="mockup">
-    <div class="mockup-titlebar">
-      <div class="mockup-dot r"></div><div class="mockup-dot y"></div><div class="mockup-dot g"></div>
-      <div class="mockup-url">goalivo.widegetlab.com — 비전보드</div>
-    </div>
-    <div class="mockup-body" style="padding:24px;background:linear-gradient(135deg,#0f172a,#1e293b);">
-      <div style="color:#fff;font-size:16px;font-weight:700;margin-bottom:16px;text-align:center;">🖼️ 나의 비전보드</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-        <div style="background:#334155;border-radius:12px;aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;">
-          <div style="font-size:32px;margin-bottom:8px;">🏃</div>
-          <div style="color:#94a3b8;font-size:11px;text-align:center;">마라톤 완주 순간</div>
-        </div>
-        <div style="background:#334155;border-radius:12px;aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;">
-          <div style="font-size:32px;margin-bottom:8px;">📜</div>
-          <div style="color:#94a3b8;font-size:11px;text-align:center;">TOEIC 900점 인증서</div>
-        </div>
-        <div style="background:#334155;border-radius:12px;aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;">
-          <div style="font-size:32px;margin-bottom:8px;">💻</div>
-          <div style="color:#94a3b8;font-size:11px;text-align:center;">나의 포트폴리오 사이트</div>
-        </div>
-        <div style="background:#334155;border-radius:12px;aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;">
-          <div style="font-size:32px;margin-bottom:8px;">🏔️</div>
-          <div style="color:#94a3b8;font-size:11px;text-align:center;">한라산 정상 정복</div>
-        </div>
-        <div style="background:#334155;border-radius:12px;aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;">
-          <div style="font-size:32px;margin-bottom:8px;">📚</div>
-          <div style="color:#94a3b8;font-size:11px;text-align:center;">올해 독서 52권</div>
-        </div>
-        <div style="background:#1e293b;border:2px dashed #475569;border-radius:12px;aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;cursor:pointer;">
-          <div style="font-size:24px;color:#475569;">+</div>
-          <div style="color:#475569;font-size:11px;">이미지 추가</div>
-        </div>
-      </div>
-    </div>
+  <h2><span data-i18n="s12_title">비전보드</span> <span class="unique-badge" data-i18n="badge_unique">차별화 기능</span></h2>
+  <p class="section-desc" data-i18n="s12_desc">달성하고 싶은 목표의 이미지를 최대 6장까지 업로드하고, 언제든 확인하며 동기부여를 유지하세요.</p>
+  <div class="feature-grid">
+    <div class="feature-card"><h4>📷 이미지 업로드</h4><p>갤러리 또는 카메라에서 목표 이미지를 최대 6장 업로드. 언제든 교체 가능합니다.</p></div>
+    <div class="feature-card"><h4>⏰ 시간별 팝업 알림</h4><p>지정한 시간에 비전 이미지가 자동으로 팝업으로 나타납니다. 하루에 여러 시간 설정 가능.</p></div>
+    <div class="feature-card"><h4>🔄 이미지 순환 표시</h4><p>등록된 이미지가 팝업마다 순환하여 매일 새로운 비전으로 동기부여를 유지합니다.</p></div>
+    <div class="feature-card"><h4>📊 목표 연동 팝업</h4><p>팝업에 D-Day 카운트다운과 진행률이 함께 표시되어 현재 목표 상황을 즉시 확인합니다.</p></div>
   </div>
+  <div class="steps">
+    <div class="step"><div class="step-content"><h4>설정 메뉴 → 비전보드 열기</h4><p>앱 우측 하단 메뉴에서 비전보드 탭을 선택합니다.</p></div></div>
+    <div class="step"><div class="step-content"><h4>+ 이미지 추가 버튼 탭</h4><p>갤러리에서 목표를 시각화하는 이미지를 선택합니다. (내 집, 여행지, 목표 체형, 커리어 등)</p></div></div>
+    <div class="step"><div class="step-content"><h4>⏰ 팝업 설정 탭</h4><p>팝업을 받고 싶은 시간을 설정합니다. (예: 오전 7:30, 오후 12:00)</p></div></div>
+    <div class="step"><div class="step-content"><h4>지정 시간에 비전 팝업 확인</h4><p>설정한 시간이 되면 비전 이미지가 팝업으로 나타나며 오늘 할 일 바로가기 버튼도 제공됩니다.</p></div></div>
+  </div>
+  <div class="highlight-box tip"><div class="icon">💡</div><div class="content"><strong>추천:</strong> 기상 직후와 점심 시간에 팝업 알림을 설정하면 하루 두 번 목표 비전을 확인하며 집중력을 유지할 수 있습니다. 상단 <a href="#spotlight">핵심 기능 하이라이트</a>에서 실제 화면을 확인해 보세요.</div></div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 13 ═══════════════════════ -->
+<!-- SECTION 13: Google Sync -->
 <section class="section" id="google">
   <span class="section-badge">13</span>
-  <h2>Google Calendar 연동</h2>
-  <p class="section-desc">
-    Google Calendar의 일정을 읽기 전용으로 가져와 Goalivo 캘린더에 오버레이합니다.
-    기존 일정을 유지하면서 목표 일정과 함께 확인하세요.
-  </p>
-
-  <div class="highlight-box info">
-    <div class="icon">🔗</div>
-    <div class="content">
-      <strong>읽기 전용 동기화:</strong> Google Calendar 일정은 Goalivo에서 수정할 수 없습니다.
-      기존 약속과 목표 일정이 겹치지 않도록 확인하는 용도로 사용됩니다.
-      설정 > 외부 일정 연동에서 연결하세요.
-    </div>
-  </div>
+  <h2 data-i18n="s13_title">Google Calendar 연동</h2>
+  <p class="section-desc" data-i18n="s13_desc">Google Calendar의 일정을 읽기 전용으로 가져와 Goalivo 캘린더에 오버레이합니다.</p>
+  <div class="highlight-box info"><div class="icon">🔗</div><div class="content" data-i18n="s13_info"><strong>읽기 전용 동기화:</strong> Google Calendar 일정은 Goalivo에서 수정할 수 없습니다. 기존 약속과 목표 일정이 겹치지 않도록 확인하는 용도입니다.</div></div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 14 ═══════════════════════ -->
+<!-- SECTION 14: Themes -->
 <section class="section" id="themes">
   <span class="section-badge">14</span>
-  <h2>테마 & 스킨</h2>
-  <p class="section-desc">
-    5가지 디자인 스킨을 제공합니다. 설정에서 언제든 변경할 수 있습니다.
-  </p>
-
+  <h2 data-i18n="s14_title">테마 & 스킨</h2>
+  <p class="section-desc" data-i18n="s14_desc">5가지 디자인 스킨을 제공합니다. 설정에서 언제든 변경할 수 있습니다.</p>
   <div class="skin-grid">
-    <div class="skin-card">
-      <div class="skin-preview" style="background:linear-gradient(135deg,#0f1117,#1a1d27);">
-        <div class="swatch" style="background:#0f1117;"></div>
-        <div class="swatch" style="background:#1a1d27;"></div>
-        <div class="swatch" style="background:#6c8cff;"></div>
-        <div class="swatch" style="background:#e8eaf0;"></div>
-      </div>
-      <div class="skin-info"><h5>Midnight</h5><p>다크 에디션</p></div>
-    </div>
-    <div class="skin-card">
-      <div class="skin-preview" style="background:linear-gradient(135deg,#fff8f4,#fef3eb);">
-        <div class="swatch" style="background:#fff8f4;"></div>
-        <div class="swatch" style="background:#fef3eb;"></div>
-        <div class="swatch" style="background:#a92c40;"></div>
-        <div class="swatch" style="background:#281802;"></div>
-      </div>
-      <div class="skin-info"><h5>Keepsake</h5><p>따뜻한 빈티지</p></div>
-    </div>
-    <div class="skin-card">
-      <div class="skin-preview" style="background:linear-gradient(135deg,#f9f9f9,#f3f3f3);">
-        <div class="swatch" style="background:#f9f9f9;"></div>
-        <div class="swatch" style="background:#002045;"></div>
-        <div class="swatch" style="background:#b22200;"></div>
-        <div class="swatch" style="background:#1a1c1c;"></div>
-      </div>
-      <div class="skin-info"><h5>Archivist</h5><p>모던 아카이비스트</p></div>
-    </div>
-    <div class="skin-card" style="border-color:#0891b2;box-shadow:0 0 0 2px rgba(8,145,178,0.2);">
-      <div class="skin-preview" style="background:linear-gradient(135deg,#f8f9fa,#ffffff);">
-        <div class="swatch" style="background:#f8f9fa;"></div>
-        <div class="swatch" style="background:#ffffff;border-color:#ccc;"></div>
-        <div class="swatch" style="background:#05658c;"></div>
-        <div class="swatch" style="background:#2d6a44;"></div>
-      </div>
-      <div class="skin-info"><h5>Aurora <span style="color:#0891b2;font-size:10px;">기본</span></h5><p>아쿠아 라이트</p></div>
-    </div>
-    <div class="skin-card">
-      <div class="skin-preview" style="background:linear-gradient(135deg,#101414,#181c1c);">
-        <div class="swatch" style="background:#101414;"></div>
-        <div class="swatch" style="background:#181c1c;"></div>
-        <div class="swatch" style="background:#ffb68b;"></div>
-        <div class="swatch" style="background:#46eaed;"></div>
-      </div>
-      <div class="skin-info"><h5>Obsidian</h5><p>다크 프리즘</p></div>
-    </div>
+    <div class="skin-card"><div class="skin-preview" style="background:linear-gradient(135deg,#0f1117,#1a1d27);"><div class="swatch" style="background:#0f1117;"></div><div class="swatch" style="background:#1a1d27;"></div><div class="swatch" style="background:#6c8cff;"></div><div class="swatch" style="background:#e8eaf0;"></div></div><div class="skin-info"><h5>Midnight</h5><p data-i18n="skin_midnight">다크 에디션</p></div></div>
+    <div class="skin-card"><div class="skin-preview" style="background:linear-gradient(135deg,#fff8f4,#fef3eb);"><div class="swatch" style="background:#fff8f4;"></div><div class="swatch" style="background:#fef3eb;"></div><div class="swatch" style="background:#a92c40;"></div><div class="swatch" style="background:#281802;"></div></div><div class="skin-info"><h5>Keepsake</h5><p data-i18n="skin_keepsake">따뜻한 빈티지</p></div></div>
+    <div class="skin-card"><div class="skin-preview" style="background:linear-gradient(135deg,#f9f9f9,#f3f3f3);"><div class="swatch" style="background:#f9f9f9;"></div><div class="swatch" style="background:#002045;"></div><div class="swatch" style="background:#b22200;"></div><div class="swatch" style="background:#1a1c1c;"></div></div><div class="skin-info"><h5>Archivist</h5><p data-i18n="skin_archivist">모던 아카이비스트</p></div></div>
+    <div class="skin-card" style="border-color:#0891b2;box-shadow:0 0 0 2px rgba(8,145,178,0.2);"><div class="skin-preview" style="background:linear-gradient(135deg,#f8f9fa,#ffffff);"><div class="swatch" style="background:#f8f9fa;"></div><div class="swatch" style="background:#ffffff;border-color:#ccc;"></div><div class="swatch" style="background:#05658c;"></div><div class="swatch" style="background:#2d6a44;"></div></div><div class="skin-info"><h5>Aurora <span style="color:#0891b2;font-size:10px;" data-i18n="skin_default">기본</span></h5><p data-i18n="skin_aurora">아쿠아 라이트</p></div></div>
+    <div class="skin-card"><div class="skin-preview" style="background:linear-gradient(135deg,#101414,#181c1c);"><div class="swatch" style="background:#101414;"></div><div class="swatch" style="background:#181c1c;"></div><div class="swatch" style="background:#ffb68b;"></div><div class="swatch" style="background:#46eaed;"></div></div><div class="skin-info"><h5>Obsidian</h5><p data-i18n="skin_obsidian">다크 프리즘</p></div></div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 15 ═══════════════════════ -->
+<!-- SECTION 15: i18n -->
 <section class="section" id="i18n">
   <span class="section-badge">15</span>
-  <h2>다국어 지원</h2>
-  <p class="section-desc">
-    한국어, English, 日本語 3개 언어를 지원합니다. 설정에서 언제든 전환 가능합니다.
-  </p>
+  <h2 data-i18n="s15_title">다국어 지원</h2>
+  <p class="section-desc" data-i18n="s15_desc">한국어, English, 日本語 3개 언어를 지원합니다. 설정에서 언제든 전환 가능합니다.</p>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0;">
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-align:center;">
-      <div style="font-size:32px;margin-bottom:8px;">🇰🇷</div>
-      <div style="font-weight:700;">한국어</div>
-    </div>
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-align:center;">
-      <div style="font-size:32px;margin-bottom:8px;">🇺🇸</div>
-      <div style="font-weight:700;">English</div>
-    </div>
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-align:center;">
-      <div style="font-size:32px;margin-bottom:8px;">🇯🇵</div>
-      <div style="font-weight:700;">日本語</div>
-    </div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">🇰🇷</div><div style="font-weight:700;">한국어</div></div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">🇺🇸</div><div style="font-weight:700;">English</div></div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">🇯🇵</div><div style="font-weight:700;">日本語</div></div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 16 ═══════════════════════ -->
+<!-- SECTION 16: Data -->
 <section class="section" id="data">
   <span class="section-badge">16</span>
-  <h2>데이터 관리</h2>
-  <p class="section-desc">데이터를 안전하게 관리하세요.</p>
+  <h2 data-i18n="s16_title">데이터 관리</h2>
   <div class="feature-grid">
-    <div class="feature-card">
-      <h4>☁️ 클라우드 동기화</h4>
-      <p>로그인하면 모든 기기에서 자동 동기화. 데이터 변경 시 1.5초 내 클라우드에 반영</p>
-    </div>
-    <div class="feature-card">
-      <h4>📤 데이터 내보내기</h4>
-      <p>모든 데이터를 JSON 파일로 내보내기. 백업이나 이전에 활용</p>
-    </div>
-    <div class="feature-card">
-      <h4>📥 데이터 가져오기</h4>
-      <p>내보낸 JSON 파일을 가져와서 데이터 복원</p>
-    </div>
-    <div class="feature-card">
-      <h4>💾 오프라인 저장</h4>
-      <p>인터넷 없어도 브라우저 IndexedDB에 데이터가 저장되어 오프라인 사용 가능</p>
-    </div>
+    <div class="feature-card"><h4 data-i18n="s16_f1_t">☁️ 클라우드 동기화</h4><p data-i18n="s16_f1_d">로그인하면 모든 기기에서 자동 동기화</p></div>
+    <div class="feature-card"><h4 data-i18n="s16_f2_t">📤 데이터 내보내기</h4><p data-i18n="s16_f2_d">모든 데이터를 JSON 파일로 내보내기</p></div>
+    <div class="feature-card"><h4 data-i18n="s16_f3_t">📥 데이터 가져오기</h4><p data-i18n="s16_f3_d">내보낸 JSON 파일을 가져와서 데이터 복원</p></div>
+    <div class="feature-card"><h4 data-i18n="s16_f4_t">💾 오프라인 저장</h4><p data-i18n="s16_f4_d">인터넷 없어도 브라우저에 데이터가 저장되어 오프라인 사용 가능</p></div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 17 ═══════════════════════ -->
+<!-- SECTION 17: Settings -->
 <section class="section" id="settings">
   <span class="section-badge">17</span>
-  <h2>설정</h2>
-  <p class="section-desc">앱의 모든 설정을 한 곳에서 관리합니다.</p>
+  <h2 data-i18n="s17_title">설정</h2>
   <div class="feature-grid">
-    <div class="feature-card"><h4>👤 계정</h4><p>이메일 가입, Google 로그인, 로그아웃</p></div>
-    <div class="feature-card"><h4>🌐 언어</h4><p>한국어 / English / 日本語</p></div>
-    <div class="feature-card"><h4>🎨 테마</h4><p>5가지 스킨 중 선택</p></div>
-    <div class="feature-card"><h4>🤖 AI 리포터</h4><p>Gio(자료조사) / Coco(현실 코칭) 선택</p></div>
-    <div class="feature-card"><h4>🔗 Google 연동</h4><p>Google Calendar 동기화 연결/해제</p></div>
-    <div class="feature-card"><h4>⏰ 시간 설정</h4><p>하루 시작/종료 시간, 주 시작 요일, 공휴일 국가</p></div>
-    <div class="feature-card"><h4>🏷️ 카테고리</h4><p>기본 카테고리 + 커스텀 카테고리 관리</p></div>
-    <div class="feature-card"><h4>💬 피드백</h4><p>버그 리포트, 기능 제안 게시판</p></div>
+    <div class="feature-card"><h4 data-i18n="s17_f1_t">👤 계정</h4><p data-i18n="s17_f1_d">이메일 가입, Google 로그인, 로그아웃</p></div>
+    <div class="feature-card"><h4 data-i18n="s17_f2_t">🌐 언어</h4><p data-i18n="s17_f2_d">한국어 / English / 日本語</p></div>
+    <div class="feature-card"><h4 data-i18n="s17_f3_t">🎨 테마</h4><p data-i18n="s17_f3_d">5가지 스킨 중 선택</p></div>
+    <div class="feature-card"><h4 data-i18n="s17_f4_t">🤖 AI 리포터</h4><p data-i18n="s17_f4_d">Gio(자료조사) / Coco(현실 코칭) 선택</p></div>
+    <div class="feature-card"><h4 data-i18n="s17_f5_t">🔗 Google 연동</h4><p data-i18n="s17_f5_d">Google Calendar 동기화 연결/해제</p></div>
+    <div class="feature-card"><h4 data-i18n="s17_f6_t">⏰ 시간 설정</h4><p data-i18n="s17_f6_d">하루 시작/종료 시간, 주 시작 요일, 공휴일 국가</p></div>
   </div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 18 ═══════════════════════ -->
+<!-- SECTION 18: Comparison -->
 <section class="section" id="compare">
   <span class="section-badge">18</span>
-  <h2>다른 캘린더 앱과 비교</h2>
-  <p class="section-desc">Goalivo만의 차별화된 기능을 한눈에 비교하세요.</p>
-
+  <h2 data-i18n="s18_title">다른 캘린더 앱과 비교</h2>
   <table class="compare-table">
-    <tr>
-      <th>기능</th>
-      <th>Goalivo</th>
-      <th>Google Calendar</th>
-      <th>Notion</th>
-      <th>Apple Calendar</th>
-    </tr>
-    <tr>
-      <td>목표 역산 계획</td>
-      <td class="star">&#9733; 핵심기능</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>AI 마일스톤 자동 생성</td>
-      <td class="star">&#9733; 핵심기능</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>AI 맞춤 꿀팁 리포트</td>
-      <td class="star">&#9733; 핵심기능</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>8가지 뷰 (10년까지)</td>
-      <td class="check">&#10003;</td>
-      <td class="cross">4가지</td>
-      <td class="cross">3가지</td>
-      <td class="cross">4가지</td>
-    </tr>
-    <tr>
-      <td>D-Day 카운트다운</td>
-      <td class="check">&#10003;</td>
-      <td class="cross">-</td>
-      <td class="cross">수동</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>진행률 & 번다운 차트</td>
-      <td class="check">&#10003;</td>
-      <td class="cross">-</td>
-      <td class="cross">부분</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>비전보드</td>
-      <td class="check">&#10003;</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>타임테이블 (시간 분석)</td>
-      <td class="check">&#10003;</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>루틴 트래킹</td>
-      <td class="check">&#10003;</td>
-      <td class="cross">-</td>
-      <td class="check">&#10003;</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>테마 스킨</td>
-      <td class="check">5가지</td>
-      <td class="cross">-</td>
-      <td class="cross">2가지</td>
-      <td class="cross">-</td>
-    </tr>
-    <tr>
-      <td>무료 사용</td>
-      <td class="check">&#10003;</td>
-      <td class="check">&#10003;</td>
-      <td class="cross">유료</td>
-      <td class="check">&#10003;</td>
-    </tr>
+    <tr><th data-i18n="cmp_feature">기능</th><th>Goalivo</th><th>Google Cal</th><th>Notion</th><th>Apple Cal</th></tr>
+    <tr><td data-i18n="cmp_r1">목표 역산 계획</td><td class="star">&#9733; Core</td><td class="cross">-</td><td class="cross">-</td><td class="cross">-</td></tr>
+    <tr><td data-i18n="cmp_r2">AI 마일스톤 자동 생성</td><td class="star">&#9733; Core</td><td class="cross">-</td><td class="cross">-</td><td class="cross">-</td></tr>
+    <tr><td data-i18n="cmp_r3">AI 맞춤 꿀팁 리포트</td><td class="star">&#9733; Core</td><td class="cross">-</td><td class="cross">-</td><td class="cross">-</td></tr>
+    <tr><td data-i18n="cmp_r4">8가지 뷰 (10년까지)</td><td class="check">&#10003;</td><td class="cross">4</td><td class="cross">3</td><td class="cross">4</td></tr>
+    <tr><td data-i18n="cmp_r5">D-Day 카운트다운</td><td class="check">&#10003;</td><td class="cross">-</td><td class="cross">-</td><td class="cross">-</td></tr>
+    <tr><td data-i18n="cmp_r6">비전보드</td><td class="check">&#10003;</td><td class="cross">-</td><td class="cross">-</td><td class="cross">-</td></tr>
+    <tr><td data-i18n="cmp_r7">타임테이블 (시간 분석)</td><td class="check">&#10003;</td><td class="cross">-</td><td class="cross">-</td><td class="cross">-</td></tr>
+    <tr><td data-i18n="cmp_r8">테마 스킨</td><td class="check">5</td><td class="cross">-</td><td class="cross">2</td><td class="cross">-</td></tr>
+    <tr><td data-i18n="cmp_r9">무료 사용</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="cross">Paid</td><td class="check">&#10003;</td></tr>
   </table>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 19 ═══════════════════════ -->
+<!-- SECTION 19: Tips -->
 <section class="section" id="tips">
   <span class="section-badge">19</span>
-  <h2>꿀팁 모음</h2>
-  <p class="section-desc">Goalivo를 200% 활용하는 실전 팁들입니다.</p>
-
-  <div class="highlight-box tip">
-    <div class="icon">1</div>
-    <div class="content"><strong>목표는 구체적으로:</strong> "영어 공부" 보다 "TOEIC 900점 달성"처럼 측정 가능한 목표를 세우세요. AI 리포트가 더 정확한 팁을 제공합니다.</div>
-  </div>
-  <div class="highlight-box tip">
-    <div class="icon">2</div>
-    <div class="content"><strong>주간 시간을 현실적으로:</strong> 처음에는 주 5시간부터 시작해서 점진적으로 늘리는 것이 지속 가능합니다.</div>
-  </div>
-  <div class="highlight-box tip">
-    <div class="icon">3</div>
-    <div class="content"><strong>루틴과 목표를 연결:</strong> "매일 영어 단어 30개" 루틴을 만들면 TOEIC 목표의 마일스톤 달성이 자연스럽게 따라옵니다.</div>
-  </div>
-  <div class="highlight-box tip">
-    <div class="icon">4</div>
-    <div class="content"><strong>타임테이블로 하루 복기:</strong> 매일 밤 5분만 투자해서 오늘의 시간 사용을 기록하면, 주간 리포트에서 패턴을 발견할 수 있습니다.</div>
-  </div>
-  <div class="highlight-box tip">
-    <div class="icon">5</div>
-    <div class="content"><strong>비전보드 활용:</strong> 목표 달성 후의 모습을 이미지로 등록해 두면, 동기부여가 떨어질 때 큰 도움이 됩니다.</div>
-  </div>
-  <div class="highlight-box tip">
-    <div class="icon">6</div>
-    <div class="content"><strong>Google Calendar 연동:</strong> 기존 약속이 있는 시간을 확인하면서 목표 일정을 배치하면 충돌 없이 계획할 수 있습니다.</div>
-  </div>
-  <div class="highlight-box tip">
-    <div class="icon">7</div>
-    <div class="content"><strong>AI 리포터 활용:</strong> Gio는 참고 자료가 필요할 때, Coco는 실행 계획이 필요할 때 사용하세요. 목표별로 다르게 설정 가능합니다.</div>
-  </div>
+  <h2 data-i18n="s19_title">꿀팁 모음</h2>
+  <div class="highlight-box tip"><div class="icon">1</div><div class="content" data-i18n="tip1"><strong>목표는 구체적으로:</strong> "영어 공부" 보다 "TOEIC 900점 달성"처럼 측정 가능한 목표를 세우세요.</div></div>
+  <div class="highlight-box tip"><div class="icon">2</div><div class="content" data-i18n="tip2"><strong>주간 시간을 현실적으로:</strong> 처음에는 주 5시간부터 시작해서 점진적으로 늘리세요.</div></div>
+  <div class="highlight-box tip"><div class="icon">3</div><div class="content" data-i18n="tip3"><strong>루틴과 목표를 연결:</strong> "매일 영어 단어 30개" 루틴이 TOEIC 목표 달성을 자연스럽게 돕습니다.</div></div>
+  <div class="highlight-box tip"><div class="icon">4</div><div class="content" data-i18n="tip4"><strong>타임테이블로 하루 복기:</strong> 매일 밤 5분만 투자해서 시간 사용을 기록하세요.</div></div>
+  <div class="highlight-box tip"><div class="icon">5</div><div class="content" data-i18n="tip5"><strong>비전보드 활용:</strong> 목표 달성 후의 모습을 이미지로 등록해 두면 동기부여에 도움됩니다.</div></div>
 </section>
 
-
-<!-- ═══════════════════════ SECTION 20 ═══════════════════════ -->
+<!-- SECTION 20: FAQ -->
 <section class="section" id="faq">
   <span class="section-badge">20</span>
-  <h2>자주 묻는 질문 (FAQ)</h2>
-
-  <div class="feature-card">
-    <h4>Q. 무료인가요?</h4>
-    <p>네, Goalivo의 핵심 기능은 모두 무료입니다. 회원가입 후 바로 사용할 수 있습니다.</p>
-  </div>
-  <div class="feature-card">
-    <h4>Q. 모바일에서도 사용할 수 있나요?</h4>
-    <p>네! 모바일 브라우저에서 완벽하게 동작합니다. 하단 탭 네비게이션, 스와이프 제스처 등 모바일에 최적화되어 있습니다.</p>
-  </div>
-  <div class="feature-card">
-    <h4>Q. 데이터가 안전한가요?</h4>
-    <p>데이터는 브라우저 로컬 저장소(IndexedDB)와 클라우드(Supabase)에 이중 저장됩니다. JSON 내보내기로 추가 백업도 가능합니다.</p>
-  </div>
-  <div class="feature-card">
-    <h4>Q. 인터넷 없이도 사용할 수 있나요?</h4>
-    <p>기본 기능은 오프라인에서도 사용 가능합니다. 데이터는 로컬에 저장되고, 인터넷 연결 시 자동 동기화됩니다.</p>
-  </div>
-  <div class="feature-card">
-    <h4>Q. Google Calendar 일정을 수정할 수 있나요?</h4>
-    <p>아니요, Google Calendar 일정은 읽기 전용 오버레이입니다. Goalivo 내에서 수정은 불가하며, 기존 일정 확인 용도로만 사용됩니다.</p>
-  </div>
-  <div class="feature-card">
-    <h4>Q. 영어나 일본어로 사용할 수 있나요?</h4>
-    <p>네! 설정 > 언어에서 한국어, English, 日本語 중 선택할 수 있습니다.</p>
-  </div>
+  <h2>FAQ</h2>
+  <div class="feature-card"><h4 data-i18n="faq1_q">Q. 무료인가요?</h4><p data-i18n="faq1_a">네, Goalivo의 핵심 기능은 모두 무료입니다.</p></div>
+  <div class="feature-card"><h4 data-i18n="faq2_q">Q. 모바일에서도 사용할 수 있나요?</h4><p data-i18n="faq2_a">네! 모바일 브라우저에서 완벽하게 동작합니다.</p></div>
+  <div class="feature-card"><h4 data-i18n="faq3_q">Q. 데이터가 안전한가요?</h4><p data-i18n="faq3_a">데이터는 로컬 저장소와 클라우드에 이중 저장됩니다. JSON 내보내기로 추가 백업도 가능합니다.</p></div>
+  <div class="feature-card"><h4 data-i18n="faq4_q">Q. 인터넷 없이도 사용할 수 있나요?</h4><p data-i18n="faq4_a">기본 기능은 오프라인에서도 사용 가능합니다.</p></div>
 </section>
-
 
 </main>
 
-<!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+<!-- FOOTER -->
 <footer class="guide-footer">
-  <p>Goalivo — 목표 달성용 타임라인 캘린더</p>
-  <p>
-    <a href="https://goalivo.widegetlab.com">앱으로 이동</a> ·
-    <a href="/privacy.html">개인정보처리방침</a> ·
-    <a href="/terms.html">서비스 약관</a> ·
-    <a href="https://goalivo.widegetlab.com/feedback.html">피드백</a>
-  </p>
-  <p style="margin-top:12px;font-size:11px;color:#cbd5e1;">Built with care. v2026.05.01</p>
+  <p>Goalivo — <span data-i18n="footer_tagline">목표 달성용 타임라인 캘린더</span></p>
+  <p><a href="https://goalivo.widegetlab.com" data-i18n="footer_app">앱으로 이동</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/feedback.html">Feedback</a></p>
 </footer>
 
-<!-- ═══════════════════════ SHARE MODAL ═══════════════════════ -->
-<div class="share-modal-overlay" id="shareModal" onclick="if(event.target===this)closeShareModal()">
-  <div class="share-modal" style="position:relative;">
-    <button class="share-close" onclick="closeShareModal()">&times;</button>
-    <h3>이 가이드 공유하기</h3>
-    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">아래 링크를 복사해서 친구나 동료에게 공유하세요.</p>
-    <div class="share-url-box">
-      <input type="text" value="https://goalivo.widegetlab.com/guide" id="shareUrl" readonly>
-      <button onclick="copyShareUrl()">복사</button>
-    </div>
-    <div id="copyFeedback" style="font-size:12px;color:#10b981;text-align:center;min-height:20px;"></div>
-    <div class="share-methods">
-      <div class="share-method" onclick="shareKakao()">
-        <svg width="24" height="24" viewBox="0 0 24 24"><path fill="#3C1E1E" d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7l-1.2 4.4c-.1.3.3.5.5.3l5.2-3.4c.3 0 .5 0 .8 0 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>
-        카카오톡
-      </div>
-      <div class="share-method" onclick="shareTwitter()">
-        <svg width="24" height="24" viewBox="0 0 24 24"><path fill="#1DA1F2" d="M23 3a10.9 10.9 0 01-3.14 1.53A4.48 4.48 0 0012 7.5v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg>
-        트위터
-      </div>
-      <div class="share-method" onclick="shareEmail()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" stroke="#64748b" stroke-width="2"/><path d="M2 4l10 8 10-8" stroke="#64748b" stroke-width="2"/></svg>
-        이메일
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
-function openShareModal(){document.getElementById('shareModal').classList.add('active');}
-function closeShareModal(){document.getElementById('shareModal').classList.remove('active');}
-function copyShareUrl(){
-  const input=document.getElementById('shareUrl');
-  input.select();
-  navigator.clipboard.writeText(input.value).then(()=>{
-    document.getElementById('copyFeedback').textContent='링크가 복사되었습니다!';
-    setTimeout(()=>{document.getElementById('copyFeedback').textContent='';},2000);
-  });
+/* ══════════════════════════════════════════════════════════
+   i18n DICTIONARY — ko (default) / en / ja
+   ══════════════════════════════════════════════════════════ */
+const I18N = {
+ko: {
+  hero_title: 'Goalivo 사용 가이드북',
+  hero_desc: '목표를 세우고, 역산해서, 실행까지 도와주는<br>AI 타임라인 캘린더의 모든 기능을 알려드립니다',
+  hero_cta: 'Goalivo 시작하기',
+  hero_share: '이 가이드 공유하기',
+  toast_copied: '링크가 복사되었습니다!',
+  nav_intro:'소개', nav_calendar:'캘린더', nav_goals:'목표 관리', nav_reverse:'역산 기능',
+  nav_ai:'AI 리포터', nav_timetable:'타임테이블', nav_routine:'루틴', nav_reports:'리포트',
+  nav_themes:'테마', nav_settings:'설정', nav_tips:'꿀팁',
+  toc_title:'📋 목차',
+  toc_01:'Goalivo란?', toc_02:'시작하기', toc_03:'캘린더 뷰', toc_04:'목표 관리',
+  toc_05:'목표 역산 기능', toc_06:'마일스톤', toc_07:'AI 리포터', toc_08:'타임테이블',
+  toc_09:'루틴 관리', toc_10:'리포트 & 분석', toc_11:'빠른 추가', toc_12:'비전보드',
+  toc_13:'Google 연동', toc_14:'테마 & 스킨', toc_15:'다국어 지원', toc_16:'데이터 관리',
+  toc_17:'설정', toc_18:'비교표', toc_19:'꿀팁 모음', toc_20:'FAQ',
+  s01_title:'Goalivo란?', s01_desc:'Goalivo는 <strong>목표 달성에 특화된 타임라인 캘린더</strong>입니다. 단순히 일정을 기록하는 것을 넘어, 목표를 설정하면 <strong>AI가 역산</strong>해서 마일스톤과 일정을 자동으로 만들어 줍니다.',
+  s01_f1_t:'🎯 목표 중심 설계', s01_f1_d:'D-Day 카운트다운, 주간 시간 할당, 진행률 추적까지 목표 달성에 필요한 모든 것',
+  s01_f2_t:'🤖 AI 역산 & 리포트', s01_f2_d:'목표를 입력하면 AI가 마일스톤을 생성하고, 현재 수준에 맞는 맞춤형 꿀팁 리포트 제공',
+  s01_f3_t:'📅 8가지 뷰 모드', s01_f3_d:'Day부터 10 Years까지 — 하루 일과부터 인생 계획까지 한눈에',
+  s01_f4_t:'⏰ 타임테이블 & 루틴', s01_f4_d:'10분 단위 시간 블록과 반복 루틴으로 하루를 체계적으로 관리',
+  s01_f5_t:'🎨 5가지 테마 스킨', s01_f5_d:'Midnight, Keepsake, Archivist, Aurora, Obsidian — 취향에 맞는 디자인',
+  s01_f6_t:'🌐 클라우드 동기화', s01_f6_d:'어디서든 로그인하면 모든 기기에서 데이터 동기화',
+  s02_title:'시작하기', s02_desc:'3단계만에 Goalivo를 시작할 수 있습니다.',
+  s02_step1_t:'회원가입 또는 Google 로그인', s02_step1_d:'이메일로 간단히 가입하거나, Google 계정으로 바로 시작하세요.',
+  s02_step2_t:'첫 번째 목표 만들기', s02_step2_d:'좌측 사이드바의 + 추가 버튼을 눌러 달성하고 싶은 목표를 입력하세요.',
+  s02_step3_t:'AI가 계획 세워주기', s02_step3_d:'목표를 저장하면 AI가 마일스톤을 자동으로 생성하고, 캘린더에 일정이 배치됩니다.',
+  mock_subtitle:'목표 달성용 타임라인 캘린더', mock_email:'이메일', mock_pw:'비밀번호', mock_signup:'회원가입', mock_or:'또는', mock_google:'Google 계정으로 시작',
+  s03_title:'캘린더 뷰', s03_desc:'Goalivo는 <strong>8가지 뷰 모드</strong>를 제공합니다. 하루 단위부터 10년 단위까지 자유롭게 전환하며 일정을 확인하세요.',
+  mock_cal_url:'goalivo.widegetlab.com — 캘린더', mock_today_tasks:'오늘 할 일 <span style="background:#0891b2;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;">3</span>',
+  mock_task1:'TOEIC 단어 50개', mock_task2:'포트폴리오 수정', mock_task3:'러닝 5km',
+  mock_goal_list:'목표 목록', mock_g1:'TOEIC 900점', mock_g2:'마라톤 완주', mock_g3:'포트폴리오 제작', mock_month:'2026.7월',
+  d_sun:'일',d_mon:'월',d_tue:'화',d_wed:'수',d_thu:'목',d_fri:'금',d_sat:'토',
+  mock_ev1:'TOEIC 모의고사',mock_ev2:'러닝 10km',mock_ev3:'포트폴리오 리뷰',mock_ev4:'영어 스터디',mock_ev5:'팀 미팅',mock_ev6:'5km 러닝',mock_ev7:'단어 암기 50개',mock_ev8:'디자인 완성',mock_ev9:'LC 집중 훈련',mock_ev10:'마감: M1',mock_ev11:'하프 마라톤',mock_ev12:'RC 파트5 특강',mock_ev13:'배포 리허설',
+  s03_views_title:'8가지 뷰 모드',
+  s03_v1:'하루 일정을 시간대별로 상세히 확인',s03_v2:'한 주의 일정을 한눈에 조망',s03_v3:'2주 단위로 넓게 보는 스케줄',s03_v4:'월간 캘린더 (기본 뷰)',s03_v5:'분기별 마일스톤 진행 현황',s03_v6:'1년 전체 목표 타임라인',s03_v7:'중기 인생 계획 조망',s03_v8:'장기 비전 타임라인',
+  s03_tip:'<strong>Tip:</strong> 월 뷰에서 날짜를 탭하면 Day 뷰로 바로 전환됩니다. 날짜를 길게 누르면 빠른 추가 시트가 열립니다.',
+  s04_title:'목표 관리', badge_unique:'차별화 기능', s04_desc:'Goalivo의 핵심은 <strong>목표 중심의 캘린더</strong>입니다. 목표를 만들면 D-Day 카운트다운, 진행률, 주간 시간 할당이 자동으로 계산됩니다.',
+  s04_f1_t:'📝 기본 정보',s04_f1_d:'목표명, 설명, 시작일, 목표일 설정',s04_f2_t:'⏱️ 시간 계획',s04_f2_d:'총 필요 시간과 주간 투입 시간을 설정하면 자동으로 일정 배분',s04_f3_t:'🏷️ 카테고리',s04_f3_d:'학습, 커리어, 건강, 재무, 개인, 프로젝트 + 커스텀 카테고리',s04_f4_t:'🎨 컬러 코딩',s04_f4_d:'8가지 색상 중 선택하여 캘린더에서 한눈에 구분',s04_f5_t:'📆 활동 요일',s04_f5_d:'주중만, 주말만, 또는 원하는 요일만 선택 가능',s04_f6_t:'📊 상태 관리',s04_f6_d:'예정 → 진행 중 → 완료 / 지연 / 보류 상태 전환',
+  s05_title:'목표 역산 기능', s05_desc:'일반 캘린더는 일정을 "기록"하지만, Goalivo는 목표에서 <strong>역산</strong>합니다. "언제까지 달성할래?"를 입력하면 → 지금부터 무엇을 해야 하는지 자동으로 계산합니다.',
+  s05_info:'<strong>역산이란?</strong> 목표 기한과 필요한 총 시간을 입력하면, Goalivo가 남은 기간을 주 단위로 나눠 하루에 얼마나 투입해야 하는지 자동으로 계산합니다. 마일스톤이 지연되면 <strong>자동 리밸런싱</strong>으로 나머지 일정이 재조정됩니다.',
+  s05_step1_t:'1. 목표 입력',s05_step1_d:'"TOEIC 900점"<br>목표일: 9월 28일<br>총 200시간 필요',s05_step2_t:'2. AI 역산',s05_step2_d:'남은 26주 ÷ 200시간<br>= 주 7.7시간<br>= 하루 약 1.1시간',s05_step3_t:'3. 마일스톤 생성',s05_step3_d:'M1: 기초 문법 (3주)<br>M2: LC 훈련 (4주)<br>M3: RC 훈련 (4주)...',s05_step4_t:'4. 캘린더 배치',s05_step4_d:'마일스톤별 일정이<br>캘린더에 자동 배치<br>진행률 실시간 추적',
+  s06_title:'마일스톤 & 태스크', s06_desc:'목표를 달성 가능한 작은 단계로 쪼갭니다. AI가 자동 생성하거나 직접 만들 수 있습니다.',
+  s07_title:'AI 리포터', s07_desc:'Goalivo에는 두 명의 AI 친구가 있습니다. <strong>Gio</strong>는 자료조사 전문, <strong>Coco</strong>는 현실적 코칭 전문. 목표에 맞는 꿀팁 리포트를 자동으로 생성합니다.',
+  s07_gio:'자료조사를 잘하는 친구<br>최신 링크와 성공 후기를 수집해서<br>레퍼런스 중심의 리포트 제공', s07_coco:'현실적으로 보정해주는 친구<br>내 수준에 맞게 팁을 다듬어<br>실행 가능한 조언을 제공',
+  s08_title:'타임테이블', s08_desc:'하루 시간을 카테고리별로 관리합니다. 일일 요약, 10분 단위 블록, 주간 뷰 3가지 모드를 제공합니다.',
+  s08_f1_t:'📋 일일 요약',s08_f1_d:'카테고리별 계획 시간 vs 실제 시간을 비교하고 달성률을 확인',s08_f2_t:'⏱️ 10분 단위 블록',s08_f2_d:'하루를 5/10/20/30/60분 단위로 쪼개서 시각적으로 시간 배분',s08_f3_t:'📊 주간 타임블록',s08_f3_d:'일주일치 시간 블록을 한눈에 보고 패턴을 파악',
+  s09_title:'루틴 관리', s09_desc:'매일 반복하는 습관을 루틴으로 등록하고 연속 달성일을 추적하세요. 팝업 알림으로 잊지 않게 도와줍니다.',
+  s10_title:'리포트 & 분석', s10_desc:'주간 계획 vs 실제, 체크인 추이, 목표별 번다운 차트 등 진행 상황을 시각적으로 분석합니다.',
+  s11_title:'빠른 추가', s11_desc:'우하단의 + 버튼을 눌러 일정, 할 일, 기념일을 3초 안에 추가하세요.',
+  s11_f1_t:'📅 일정 (Schedule)',s11_f1_d:'날짜, 시간, 제목을 입력하면 캘린더에 시간 블록 생성',s11_f2_t:'✅ 할 일 (Todo)',s11_f2_d:'오늘의 체크리스트에 즉시 태스크 추가',s11_f3_t:'🎂 기념일 (Anniversary)',s11_f3_d:'생일, 기념일 등 반복되는 이벤트 등록',
+  s12_title:'비전보드', s12_desc:'달성하고 싶은 목표의 이미지를 최대 6장까지 업로드하고, 언제든 확인하며 동기부여를 유지하세요.',
+  s13_title:'Google Calendar 연동', s13_desc:'Google Calendar의 일정을 읽기 전용으로 가져와 Goalivo 캘린더에 오버레이합니다.',
+  s13_info:'<strong>읽기 전용 동기화:</strong> Google Calendar 일정은 Goalivo에서 수정할 수 없습니다. 기존 약속과 목표 일정이 겹치지 않도록 확인하는 용도입니다.',
+  s14_title:'테마 & 스킨', s14_desc:'5가지 디자인 스킨을 제공합니다. 설정에서 언제든 변경할 수 있습니다.',
+  skin_midnight:'다크 에디션',skin_keepsake:'따뜻한 빈티지',skin_archivist:'모던 아카이비스트',skin_default:'기본',skin_aurora:'아쿠아 라이트',skin_obsidian:'다크 프리즘',
+  s15_title:'다국어 지원', s15_desc:'한국어, English, 日本語 3개 언어를 지원합니다. 설정에서 언제든 전환 가능합니다.',
+  s16_title:'데이터 관리', s16_f1_t:'☁️ 클라우드 동기화',s16_f1_d:'로그인하면 모든 기기에서 자동 동기화',s16_f2_t:'📤 데이터 내보내기',s16_f2_d:'모든 데이터를 JSON 파일로 내보내기',s16_f3_t:'📥 데이터 가져오기',s16_f3_d:'내보낸 JSON 파일을 가져와서 데이터 복원',s16_f4_t:'💾 오프라인 저장',s16_f4_d:'인터넷 없어도 브라우저에 데이터가 저장되어 오프라인 사용 가능',
+  s17_title:'설정', s17_f1_t:'👤 계정',s17_f1_d:'이메일 가입, Google 로그인, 로그아웃',s17_f2_t:'🌐 언어',s17_f2_d:'한국어 / English / 日本語',s17_f3_t:'🎨 테마',s17_f3_d:'5가지 스킨 중 선택',s17_f4_t:'🤖 AI 리포터',s17_f4_d:'Gio(자료조사) / Coco(현실 코칭) 선택',s17_f5_t:'🔗 Google 연동',s17_f5_d:'Google Calendar 동기화 연결/해제',s17_f6_t:'⏰ 시간 설정',s17_f6_d:'하루 시작/종료 시간, 주 시작 요일, 공휴일 국가',
+  s18_title:'다른 캘린더 앱과 비교', cmp_feature:'기능',cmp_r1:'목표 역산 계획',cmp_r2:'AI 마일스톤 자동 생성',cmp_r3:'AI 맞춤 꿀팁 리포트',cmp_r4:'8가지 뷰 (10년까지)',cmp_r5:'D-Day 카운트다운',cmp_r6:'비전보드',cmp_r7:'타임테이블 (시간 분석)',cmp_r8:'테마 스킨',cmp_r9:'무료 사용',
+  s19_title:'꿀팁 모음',
+  tip1:'<strong>목표는 구체적으로:</strong> "영어 공부" 보다 "TOEIC 900점 달성"처럼 측정 가능한 목표를 세우세요.',
+  tip2:'<strong>주간 시간을 현실적으로:</strong> 처음에는 주 5시간부터 시작해서 점진적으로 늘리세요.',
+  tip3:'<strong>루틴과 목표를 연결:</strong> "매일 영어 단어 30개" 루틴이 TOEIC 목표 달성을 자연스럽게 돕습니다.',
+  tip4:'<strong>타임테이블로 하루 복기:</strong> 매일 밤 5분만 투자해서 시간 사용을 기록하세요.',
+  tip5:'<strong>비전보드 활용:</strong> 목표 달성 후의 모습을 이미지로 등록해 두면 동기부여에 도움됩니다.',
+  faq1_q:'Q. 무료인가요?',faq1_a:'네, Goalivo의 핵심 기능은 모두 무료입니다.',
+  faq2_q:'Q. 모바일에서도 사용할 수 있나요?',faq2_a:'네! 모바일 브라우저에서 완벽하게 동작합니다.',
+  faq3_q:'Q. 데이터가 안전한가요?',faq3_a:'데이터는 로컬 저장소와 클라우드에 이중 저장됩니다. JSON 내보내기로 추가 백업도 가능합니다.',
+  faq4_q:'Q. 인터넷 없이도 사용할 수 있나요?',faq4_a:'기본 기능은 오프라인에서도 사용 가능합니다.',
+  footer_tagline:'목표 달성용 타임라인 캘린더', footer_app:'앱으로 이동',
+},
+en: {
+  hero_title: 'Goalivo User Guide',
+  hero_desc: 'Set goals, reverse-plan, and execute —<br>A complete guide to the AI timeline calendar',
+  hero_cta: 'Start Goalivo',
+  hero_share: 'Share this guide',
+  toast_copied: 'Link copied!',
+  nav_intro:'Intro', nav_calendar:'Calendar', nav_goals:'Goals', nav_reverse:'Reverse Plan',
+  nav_ai:'AI Reporter', nav_timetable:'Timetable', nav_routine:'Routine', nav_reports:'Reports',
+  nav_themes:'Themes', nav_settings:'Settings', nav_tips:'Tips',
+  toc_title:'📋 Table of Contents',
+  toc_01:'What is Goalivo?', toc_02:'Getting Started', toc_03:'Calendar Views', toc_04:'Goal Management',
+  toc_05:'Reverse Planning', toc_06:'Milestones', toc_07:'AI Reporter', toc_08:'Timetable',
+  toc_09:'Routine Tracking', toc_10:'Reports & Analytics', toc_11:'Quick Add', toc_12:'Vision Board',
+  toc_13:'Google Sync', toc_14:'Themes & Skins', toc_15:'Multi-language', toc_16:'Data Management',
+  toc_17:'Settings', toc_18:'Comparison', toc_19:'Pro Tips', toc_20:'FAQ',
+  s01_title:'What is Goalivo?', s01_desc:'Goalivo is a <strong>goal-oriented timeline calendar</strong>. Beyond simply recording schedules, set a goal and <strong>AI reverse-plans</strong> milestones and tasks automatically.',
+  s01_f1_t:'🎯 Goal-Centered Design', s01_f1_d:'D-Day countdown, weekly hour allocation, and progress tracking — everything you need to achieve your goals',
+  s01_f2_t:'🤖 AI Reverse-Plan & Reports', s01_f2_d:'Enter a goal and AI generates milestones with personalized tip reports tailored to your level',
+  s01_f3_t:'📅 8 View Modes', s01_f3_d:'From Day to 10 Years — see daily tasks to life plans at a glance',
+  s01_f4_t:'⏰ Timetable & Routines', s01_f4_d:'10-minute time blocks and recurring routines to systematically manage your day',
+  s01_f5_t:'🎨 5 Theme Skins', s01_f5_d:'Midnight, Keepsake, Archivist, Aurora, Obsidian — pick your style',
+  s01_f6_t:'🌐 Cloud Sync', s01_f6_d:'Log in anywhere and sync data across all your devices',
+  s02_title:'Getting Started', s02_desc:'Start Goalivo in just 3 steps.',
+  s02_step1_t:'Sign up or Google Login', s02_step1_d:'Sign up with email or start instantly with your Google account.',
+  s02_step2_t:'Create your first goal', s02_step2_d:'Click the + Add button in the sidebar and enter the goal you want to achieve.',
+  s02_step3_t:'AI builds your plan', s02_step3_d:'Save your goal and AI auto-generates milestones and places them on the calendar.',
+  mock_subtitle:'Goal-setting timeline calendar', mock_email:'Email', mock_pw:'Password', mock_signup:'Sign Up', mock_or:'or', mock_google:'Start with Google',
+  s03_title:'Calendar Views', s03_desc:'Goalivo offers <strong>8 view modes</strong>. Switch freely from daily to 10-year views to check your schedule.',
+  mock_cal_url:'goalivo.widegetlab.com — Calendar', mock_today_tasks:'Today\'s Tasks <span style="background:#0891b2;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;">3</span>',
+  mock_task1:'TOEIC Vocab 50', mock_task2:'Fix Portfolio', mock_task3:'Run 5km',
+  mock_goal_list:'Goal List', mock_g1:'TOEIC 900', mock_g2:'Marathon', mock_g3:'Portfolio', mock_month:'Jul 2026',
+  d_sun:'Sun',d_mon:'Mon',d_tue:'Tue',d_wed:'Wed',d_thu:'Thu',d_fri:'Fri',d_sat:'Sat',
+  mock_ev1:'TOEIC Mock Test',mock_ev2:'Run 10km',mock_ev3:'Portfolio Review',mock_ev4:'English Study',mock_ev5:'Team Meeting',mock_ev6:'5km Run',mock_ev7:'Memorize 50 Words',mock_ev8:'Design Complete',mock_ev9:'LC Intensive',mock_ev10:'Deadline: M1',mock_ev11:'Half Marathon',mock_ev12:'RC Part5 Class',mock_ev13:'Deploy Rehearsal',
+  s03_views_title:'8 View Modes',
+  s03_v1:'Detailed daily schedule by time',s03_v2:'Weekly schedule at a glance',s03_v3:'Two-week overview',s03_v4:'Monthly calendar (default)',s03_v5:'Quarterly milestone progress',s03_v6:'Full-year goal timeline',s03_v7:'5-year mid-term planning',s03_v8:'10-year long-term vision',
+  s03_tip:'<strong>Tip:</strong> Tap a date in month view to switch to Day view. Long-press to open the quick-add sheet.',
+  s04_title:'Goal Management', badge_unique:'Unique Feature', s04_desc:'The core of Goalivo is a <strong>goal-centered calendar</strong>. Create a goal and D-Day countdown, progress rate, and weekly time allocation are automatically calculated.',
+  s04_f1_t:'📝 Basic Info',s04_f1_d:'Goal name, description, start date, target date',s04_f2_t:'⏱️ Time Planning',s04_f2_d:'Set total hours and weekly hours for automatic schedule distribution',s04_f3_t:'🏷️ Categories',s04_f3_d:'Study, Career, Health, Finance, Personal, Project + Custom',s04_f4_t:'🎨 Color Coding',s04_f4_d:'Choose from 8 colors to distinguish goals on the calendar',s04_f5_t:'📆 Active Days',s04_f5_d:'Select weekdays, weekends, or specific days',s04_f6_t:'📊 Status Management',s04_f6_d:'Planned → In Progress → Completed / Delayed / On Hold',
+  s05_title:'Reverse Planning', s05_desc:'Regular calendars "record" events, but Goalivo <strong>reverse-plans</strong> from goals. Enter "when do I want to achieve this?" → it calculates what to do starting now.',
+  s05_info:'<strong>What is Reverse Planning?</strong> Enter the deadline and total hours needed, and Goalivo divides the remaining time weekly to calculate daily commitments. If milestones are delayed, <strong>auto-rebalancing</strong> readjusts the rest.',
+  s05_step1_t:'1. Enter Goal',s05_step1_d:'"TOEIC 900"<br>Deadline: Sep 28<br>200 hours needed',s05_step2_t:'2. AI Calculates',s05_step2_d:'26 weeks ÷ 200h<br>= 7.7h/week<br>= ~1.1h/day',s05_step3_t:'3. Generate Milestones',s05_step3_d:'M1: Grammar (3w)<br>M2: LC Training (4w)<br>M3: RC Training (4w)...',s05_step4_t:'4. Place on Calendar',s05_step4_d:'Milestones placed<br>automatically on calendar<br>Real-time progress tracking',
+  s06_title:'Milestones & Tasks', s06_desc:'Break goals into achievable steps. AI auto-generates or create them manually.',
+  s07_title:'AI Reporter', s07_desc:'Goalivo has two AI friends. <strong>Gio</strong> specializes in research, <strong>Coco</strong> in realistic coaching. They generate personalized tip reports for your goals.',
+  s07_gio:'Research-focused friend<br>Collects latest links and success stories<br>Reference-based reports', s07_coco:'Reality-checking friend<br>Refines tips to match your level<br>Actionable advice',
+  s08_title:'Timetable', s08_desc:'Manage daily time by category. Three modes: Daily Summary, 10-min Blocks, and Weekly view.',
+  s08_f1_t:'📋 Daily Summary',s08_f1_d:'Compare planned vs actual time by category and check completion rate',s08_f2_t:'⏱️ 10-min Blocks',s08_f2_d:'Split your day into 5/10/20/30/60-minute blocks for visual time allocation',s08_f3_t:'📊 Weekly Blocks',s08_f3_d:'View a full week of time blocks to identify patterns',
+  s09_title:'Routine Tracking', s09_desc:'Register daily habits as routines and track consecutive completion days. Popup reminders keep you on track.',
+  s10_title:'Reports & Analytics', s10_desc:'Visualize progress with planned vs actual charts, check-in trends, and goal burndown charts.',
+  s11_title:'Quick Add', s11_desc:'Tap the + button to add schedules, todos, or anniversaries in under 3 seconds.',
+  s11_f1_t:'📅 Schedule',s11_f1_d:'Enter date, time, and title to create a time block',s11_f2_t:'✅ Todo',s11_f2_d:'Instantly add a task to today\'s checklist',s11_f3_t:'🎂 Anniversary',s11_f3_d:'Register recurring events like birthdays',
+  s12_title:'Vision Board', s12_desc:'Upload up to 6 images of your goals and check them anytime for motivation.',
+  s13_title:'Google Calendar Sync', s13_desc:'Import Google Calendar events as a read-only overlay on Goalivo.',
+  s13_info:'<strong>Read-only sync:</strong> Google Calendar events cannot be edited in Goalivo. Use it to check existing appointments alongside goal schedules.',
+  s14_title:'Themes & Skins', s14_desc:'5 design skins available. Change anytime in Settings.',
+  skin_midnight:'Dark Edition',skin_keepsake:'Warm Vintage',skin_archivist:'Modern Archivist',skin_default:'Default',skin_aurora:'Aqua Light',skin_obsidian:'Dark Prism',
+  s15_title:'Multi-language', s15_desc:'Supports Korean, English, and Japanese. Switch anytime in Settings.',
+  s16_title:'Data Management', s16_f1_t:'☁️ Cloud Sync',s16_f1_d:'Auto-sync across all devices when logged in',s16_f2_t:'📤 Export Data',s16_f2_d:'Export all data as JSON file',s16_f3_t:'📥 Import Data',s16_f3_d:'Restore from exported JSON file',s16_f4_t:'💾 Offline Storage',s16_f4_d:'Works offline with browser storage',
+  s17_title:'Settings', s17_f1_t:'👤 Account',s17_f1_d:'Email signup, Google login, logout',s17_f2_t:'🌐 Language',s17_f2_d:'Korean / English / Japanese',s17_f3_t:'🎨 Theme',s17_f3_d:'Choose from 5 skins',s17_f4_t:'🤖 AI Reporter',s17_f4_d:'Gio (research) / Coco (coaching)',s17_f5_t:'🔗 Google Sync',s17_f5_d:'Connect/disconnect Google Calendar',s17_f6_t:'⏰ Time Settings',s17_f6_d:'Day start/end, week start, holiday country',
+  s18_title:'Compare with Other Calendar Apps', cmp_feature:'Feature',cmp_r1:'Goal Reverse Planning',cmp_r2:'AI Auto Milestones',cmp_r3:'AI Personalized Tips',cmp_r4:'8 Views (up to 10Y)',cmp_r5:'D-Day Countdown',cmp_r6:'Vision Board',cmp_r7:'Timetable (Time Analysis)',cmp_r8:'Theme Skins',cmp_r9:'Free to Use',
+  s19_title:'Pro Tips',
+  tip1:'<strong>Be specific:</strong> Set measurable goals like "TOEIC 900" instead of "Study English".',
+  tip2:'<strong>Be realistic with weekly hours:</strong> Start with 5 hours/week and gradually increase.',
+  tip3:'<strong>Link routines to goals:</strong> A "30 vocab words daily" routine naturally supports your TOEIC goal.',
+  tip4:'<strong>Review daily with timetable:</strong> Spend 5 minutes each night logging your time usage.',
+  tip5:'<strong>Use the vision board:</strong> Upload images of your achieved goals for motivation.',
+  faq1_q:'Q. Is it free?',faq1_a:'Yes, all core features are completely free.',
+  faq2_q:'Q. Does it work on mobile?',faq2_a:'Yes! It works perfectly in mobile browsers.',
+  faq3_q:'Q. Is my data safe?',faq3_a:'Data is stored both locally and in the cloud. JSON export is also available for backup.',
+  faq4_q:'Q. Can I use it offline?',faq4_a:'Basic features work offline.',
+  footer_tagline:'Goal-setting AI timeline calendar', footer_app:'Go to App',
+},
+ja: {
+  hero_title: 'Goalivo ユーザーガイド',
+  hero_desc: '目標を立てて、逆算して、実行まで支援する<br>AIタイムラインカレンダーの全機能をご紹介します',
+  hero_cta: 'Goalivoを始める',
+  hero_share: 'このガイドを共有',
+  toast_copied: 'リンクをコピーしました！',
+  nav_intro:'紹介', nav_calendar:'カレンダー', nav_goals:'目標管理', nav_reverse:'逆算機能',
+  nav_ai:'AIレポーター', nav_timetable:'タイムテーブル', nav_routine:'ルーティン', nav_reports:'レポート',
+  nav_themes:'テーマ', nav_settings:'設定', nav_tips:'ヒント',
+  toc_title:'📋 目次',
+  toc_01:'Goalivoとは？', toc_02:'始め方', toc_03:'カレンダービュー', toc_04:'目標管理',
+  toc_05:'目標逆算機能', toc_06:'マイルストーン', toc_07:'AIレポーター', toc_08:'タイムテーブル',
+  toc_09:'ルーティン管理', toc_10:'レポート＆分析', toc_11:'クイック追加', toc_12:'ビジョンボード',
+  toc_13:'Google連携', toc_14:'テーマ＆スキン', toc_15:'多言語対応', toc_16:'データ管理',
+  toc_17:'設定', toc_18:'比較表', toc_19:'ヒント集', toc_20:'FAQ',
+  s01_title:'Goalivoとは？', s01_desc:'Goalivoは<strong>目標達成に特化したタイムラインカレンダー</strong>です。スケジュールの記録だけでなく、目標を設定すると<strong>AIが逆算</strong>してマイルストーンとスケジュールを自動で作成します。',
+  s01_f1_t:'🎯 目標中心の設計', s01_f1_d:'D-Dayカウントダウン、週間時間配分、進捗追跡まで目標達成に必要なすべて',
+  s01_f2_t:'🤖 AI逆算＆レポート', s01_f2_d:'目標を入力するとAIがマイルストーンを生成し、レベルに合わせたヒントレポートを提供',
+  s01_f3_t:'📅 8つのビューモード', s01_f3_d:'Dayから10 Yearsまで — 日課から人生計画まで一目で確認',
+  s01_f4_t:'⏰ タイムテーブル＆ルーティン', s01_f4_d:'10分単位の時間ブロックと繰り返しルーティンで一日を体系的に管理',
+  s01_f5_t:'🎨 5種類のテーマスキン', s01_f5_d:'Midnight, Keepsake, Archivist, Aurora, Obsidian — お好みのデザインを',
+  s01_f6_t:'🌐 クラウド同期', s01_f6_d:'どこからでもログインすれば全デバイスでデータ同期',
+  s02_title:'始め方', s02_desc:'3ステップでGoalivoを始められます。',
+  s02_step1_t:'会員登録またはGoogleログイン', s02_step1_d:'メールで簡単に登録するか、Googleアカウントですぐに開始。',
+  s02_step2_t:'最初の目標を作成', s02_step2_d:'サイドバーの＋追加ボタンを押して達成したい目標を入力。',
+  s02_step3_t:'AIが計画を作成', s02_step3_d:'目標を保存するとAIがマイルストーンを自動生成し、カレンダーに配置。',
+  mock_subtitle:'目標達成用タイムラインカレンダー', mock_email:'メール', mock_pw:'パスワード', mock_signup:'会員登録', mock_or:'または', mock_google:'Googleアカウントで開始',
+  s03_title:'カレンダービュー', s03_desc:'Goalivoは<strong>8種類のビューモード</strong>を提供。日単位から10年単位まで自由に切り替え可能。',
+  mock_cal_url:'goalivo.widegetlab.com — カレンダー', mock_today_tasks:'今日のタスク <span style="background:#0891b2;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;">3</span>',
+  mock_task1:'TOEIC単語50個', mock_task2:'ポートフォリオ修正', mock_task3:'ランニング5km',
+  mock_goal_list:'目標リスト', mock_g1:'TOEIC 900点', mock_g2:'マラソン完走', mock_g3:'ポートフォリオ制作', mock_month:'2026年7月',
+  d_sun:'日',d_mon:'月',d_tue:'火',d_wed:'水',d_thu:'木',d_fri:'金',d_sat:'土',
+  mock_ev1:'TOEIC模試',mock_ev2:'10kmラン',mock_ev3:'ポートフォリオレビュー',mock_ev4:'英語スタディ',mock_ev5:'チームミーティング',mock_ev6:'5kmラン',mock_ev7:'単語暗記50個',mock_ev8:'デザイン完成',mock_ev9:'LC集中訓練',mock_ev10:'締切: M1',mock_ev11:'ハーフマラソン',mock_ev12:'RCパート5特講',mock_ev13:'デプロイリハーサル',
+  s03_views_title:'8つのビューモード',
+  s03_v1:'時間帯別の詳細な日程確認',s03_v2:'一週間のスケジュールを一望',s03_v3:'2週間単位の広い視点',s03_v4:'月間カレンダー（デフォルト）',s03_v5:'四半期ごとのマイルストーン進捗',s03_v6:'1年間の目標タイムライン',s03_v7:'5年間の中期計画',s03_v8:'10年間の長期ビジョン',
+  s03_tip:'<strong>ヒント:</strong> 月ビューで日付をタップするとDayビューに切り替わります。長押しでクイック追加シートが開きます。',
+  s04_title:'目標管理', badge_unique:'独自機能', s04_desc:'Goalivoの核心は<strong>目標中心のカレンダー</strong>です。目標を作成するとD-Dayカウントダウン、進捗率、週間時間配分が自動計算されます。',
+  s04_f1_t:'📝 基本情報',s04_f1_d:'目標名、説明、開始日、目標日の設定',s04_f2_t:'⏱️ 時間計画',s04_f2_d:'必要時間と週間投入時間を設定で自動スケジュール配分',s04_f3_t:'🏷️ カテゴリ',s04_f3_d:'学習、キャリア、健康、財務、個人、プロジェクト＋カスタム',s04_f4_t:'🎨 カラーコード',s04_f4_d:'8色から選択してカレンダーで一目で区別',s04_f5_t:'📆 活動曜日',s04_f5_d:'平日のみ、週末のみ、または好きな曜日を選択可能',s04_f6_t:'📊 ステータス管理',s04_f6_d:'予定 → 進行中 → 完了 / 遅延 / 保留',
+  s05_title:'目標逆算機能', s05_desc:'通常のカレンダーはスケジュールを「記録」しますが、Goalivoは目標から<strong>逆算</strong>します。「いつまでに達成？」を入力すると → 今から何をすべきか自動計算。',
+  s05_info:'<strong>逆算とは？</strong> 目標期限と必要な総時間を入力すると、Goalivoが残り期間を週単位で分割し、1日の必要投入時間を自動計算します。マイルストーンが遅延した場合、<strong>自動リバランス</strong>で残りのスケジュールが再調整されます。',
+  s05_step1_t:'1. 目標入力',s05_step1_d:'"TOEIC 900点"<br>目標日: 9月28日<br>合計200時間必要',s05_step2_t:'2. AI逆算',s05_step2_d:'残り26週 ÷ 200時間<br>= 週7.7時間<br>= 1日約1.1時間',s05_step3_t:'3. マイルストーン生成',s05_step3_d:'M1: 基礎文法 (3週)<br>M2: LC訓練 (4週)<br>M3: RC訓練 (4週)...',s05_step4_t:'4. カレンダー配置',s05_step4_d:'マイルストーンが<br>カレンダーに自動配置<br>進捗をリアルタイム追跡',
+  s06_title:'マイルストーン＆タスク', s06_desc:'目標を達成可能な小さなステップに分割。AIが自動生成するか手動で作成できます。',
+  s07_title:'AIレポーター', s07_desc:'Goalivoには2人のAIフレンドがいます。<strong>Gio</strong>はリサーチ専門、<strong>Coco</strong>は現実的なコーチング専門。目標に合わせたヒントレポートを自動生成します。',
+  s07_gio:'リサーチが得意な友達<br>最新リンクと成功事例を収集<br>リファレンス中心のレポート', s07_coco:'現実的に調整してくれる友達<br>あなたのレベルに合わせてヒントを調整<br>実行可能なアドバイス',
+  s08_title:'タイムテーブル', s08_desc:'1日の時間をカテゴリ別に管理。日次要約、10分ブロック、週間ビューの3モード。',
+  s08_f1_t:'📋 日次要約',s08_f1_d:'カテゴリ別の計画時間 vs 実績時間を比較して達成率を確認',s08_f2_t:'⏱️ 10分ブロック',s08_f2_d:'1日を5/10/20/30/60分単位で分割して視覚的に時間配分',s08_f3_t:'📊 週間タイムブロック',s08_f3_d:'一週間分のタイムブロックを一覧でパターンを把握',
+  s09_title:'ルーティン管理', s09_desc:'毎日の習慣をルーティンとして登録し、連続達成日数を追跡。ポップアップリマインダーで忘れずに。',
+  s10_title:'レポート＆分析', s10_desc:'週間計画vs実績、チェックイン推移、目標別バーンダウンチャートで進捗を可視化。',
+  s11_title:'クイック追加', s11_desc:'右下の＋ボタンでスケジュール、タスク、記念日を3秒で追加。',
+  s11_f1_t:'📅 スケジュール',s11_f1_d:'日付、時間、タイトルを入力してタイムブロックを作成',s11_f2_t:'✅ タスク',s11_f2_d:'今日のチェックリストにすぐタスクを追加',s11_f3_t:'🎂 記念日',s11_f3_d:'誕生日など繰り返しイベントを登録',
+  s12_title:'ビジョンボード', s12_desc:'達成したい目標の画像を最大6枚アップロードして、いつでもモチベーションを維持。',
+  s13_title:'Googleカレンダー連携', s13_desc:'Googleカレンダーの予定を読み取り専用でGoalivoに表示。',
+  s13_info:'<strong>読み取り専用同期:</strong> Googleカレンダーの予定はGoalivoで編集できません。既存の予約と目標スケジュールの重複確認用です。',
+  s14_title:'テーマ＆スキン', s14_desc:'5種類のデザインスキンを提供。設定でいつでも変更可能。',
+  skin_midnight:'ダークエディション',skin_keepsake:'ウォームビンテージ',skin_archivist:'モダンアーキビスト',skin_default:'デフォルト',skin_aurora:'アクアライト',skin_obsidian:'ダークプリズム',
+  s15_title:'多言語対応', s15_desc:'韓国語、English、日本語の3言語対応。設定でいつでも切り替え可能。',
+  s16_title:'データ管理', s16_f1_t:'☁️ クラウド同期',s16_f1_d:'ログインすれば全デバイスで自動同期',s16_f2_t:'📤 データエクスポート',s16_f2_d:'全データをJSONファイルでエクスポート',s16_f3_t:'📥 データインポート',s16_f3_d:'エクスポートしたJSONファイルからデータ復元',s16_f4_t:'💾 オフライン保存',s16_f4_d:'ネットなしでもブラウザにデータ保存でオフライン利用可能',
+  s17_title:'設定', s17_f1_t:'👤 アカウント',s17_f1_d:'メール登録、Googleログイン、ログアウト',s17_f2_t:'🌐 言語',s17_f2_d:'韓国語 / English / 日本語',s17_f3_t:'🎨 テーマ',s17_f3_d:'5種類のスキンから選択',s17_f4_t:'🤖 AIレポーター',s17_f4_d:'Gio（リサーチ）/ Coco（コーチング）選択',s17_f5_t:'🔗 Google連携',s17_f5_d:'Googleカレンダー同期の接続/解除',s17_f6_t:'⏰ 時間設定',s17_f6_d:'1日の開始/終了時間、週の始まり、祝日国',
+  s18_title:'他のカレンダーアプリとの比較', cmp_feature:'機能',cmp_r1:'目標逆算計画',cmp_r2:'AIマイルストーン自動生成',cmp_r3:'AIカスタムヒントレポート',cmp_r4:'8つのビュー（10年まで）',cmp_r5:'D-Dayカウントダウン',cmp_r6:'ビジョンボード',cmp_r7:'タイムテーブル（時間分析）',cmp_r8:'テーマスキン',cmp_r9:'無料利用',
+  s19_title:'ヒント集',
+  tip1:'<strong>目標は具体的に:</strong>「英語の勉強」より「TOEIC 900点達成」のように測定可能な目標を。',
+  tip2:'<strong>週間時間は現実的に:</strong> 最初は週5時間から始めて段階的に増やしましょう。',
+  tip3:'<strong>ルーティンと目標をリンク:</strong>「毎日英単語30個」のルーティンがTOEIC目標達成を自然にサポート。',
+  tip4:'<strong>タイムテーブルで1日を振り返り:</strong> 毎晩5分だけ時間の使い方を記録しましょう。',
+  tip5:'<strong>ビジョンボードを活用:</strong> 目標達成後の姿をイメージとして登録するとモチベーション維持に。',
+  faq1_q:'Q. 無料ですか？',faq1_a:'はい、核心機能はすべて無料です。',
+  faq2_q:'Q. モバイルでも使えますか？',faq2_a:'はい！モバイルブラウザで完璧に動作します。',
+  faq3_q:'Q. データは安全ですか？',faq3_a:'データはローカルストレージとクラウドに二重保存されます。JSONエクスポートでバックアップも可能。',
+  faq4_q:'Q. オフラインでも使えますか？',faq4_a:'基本機能はオフラインでも利用可能です。',
+  footer_tagline:'目標達成AIタイムラインカレンダー', footer_app:'アプリへ移動',
 }
-function shareKakao(){window.open('https://story.kakao.com/share?url='+encodeURIComponent('https://goalivo.widegetlab.com/guide'),'_blank');}
-function shareTwitter(){window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent('Goalivo - 목표 달성용 AI 타임라인 캘린더 사용 가이드북')+'&url='+encodeURIComponent('https://goalivo.widegetlab.com/guide'),'_blank');}
-function shareEmail(){window.location.href='mailto:?subject='+encodeURIComponent('Goalivo 사용 가이드북')+'&body='+encodeURIComponent('Goalivo 사용 가이드를 확인해보세요!\nhttps://goalivo.widegetlab.com/guide');}
+};
 
-// Smooth scroll for anchor links
-document.querySelectorAll('a[href^="#"]').forEach(a=>{
-  a.addEventListener('click',e=>{
+/* ══════════════════════════════════════════════════════════
+   i18n ENGINE
+   ══════════════════════════════════════════════════════════ */
+let currentLang = 'ko';
+
+function detectLang() {
+  const saved = localStorage.getItem('goalivo_guide_lang');
+  if (saved && I18N[saved]) return saved;
+  const nav = (navigator.language || navigator.userLanguage || 'ko').toLowerCase();
+  if (nav.startsWith('ja')) return 'ja';
+  if (nav.startsWith('en')) return 'en';
+  return 'ko';
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('goalivo_guide_lang', lang);
+  document.documentElement.lang = lang === 'ja' ? 'ja' : lang === 'en' ? 'en' : 'ko';
+  const dict = I18N[lang] || I18N.ko;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key] !== undefined) el.innerHTML = dict[key];
+  });
+  // Update lang button active state
+  const targetLangCode = lang === 'ko' ? 'KR' : lang === 'en' ? 'EN' : 'JP';
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    const langCode = btn.querySelector('span:last-child')?.textContent.trim();
+    btn.classList.toggle('active', langCode === targetLangCode);
+  });
+  // Update page title
+  const titles = { ko:'Goalivo 사용 가이드북', en:'Goalivo User Guide', ja:'Goalivo ユーザーガイド' };
+  document.title = (titles[lang] || titles.ko) + ' — Goalivo';
+}
+
+async function copyGuideLink() {
+  const guideUrl = 'https://goalivo.widegetlab.com/guide';
+  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(guideUrl);
+      showToast(I18N[currentLang]?.toast_copied || 'Link copied!');
+      return true;
+    } catch (err) {}
+  }
+
+  if (fallbackCopy(guideUrl)) {
+    showToast(I18N[currentLang]?.toast_copied || 'Link copied!');
+    return true;
+  }
+
+  const manualCopyMessage = currentLang === 'ko'
+    ? '자동 복사가 차단되어 링크를 직접 복사해주세요.'
+    : currentLang === 'ja'
+      ? '自動コピーがブロックされたため、リンクを直接コピーしてください。'
+      : 'Automatic copy was blocked. Please copy the link manually.';
+  window.prompt(manualCopyMessage, guideUrl);
+  return false;
+}
+
+function fallbackCopy(text) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  textArea.style.pointerEvents = 'none';
+  textArea.style.left = '-9999px';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  textArea.setSelectionRange(0, text.length);
+  try {
+    return document.execCommand('copy');
+  } catch (err) {
+    return false;
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('guideToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.getElementById('shareGuideButton')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  copyGuideLink();
+});
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
     e.preventDefault();
-    const target=document.querySelector(a.getAttribute('href'));
-    if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 });
-</script>
 
+// Init
+setLang(detectLang());
+</script>
 </body>
 </html>
