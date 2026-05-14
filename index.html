@@ -1218,6 +1218,8 @@
       width: 90%;
       max-width: 520px;
       max-height: 80vh;
+      display: flex;
+      flex-direction: column;
       overflow: hidden;
       transform: translateY(10px);
       transition: transform var(--tr-fast);
@@ -1246,7 +1248,9 @@
 
     .modal-body {
       padding: 20px;
-      max-height: 70vh;
+      flex: 1;
+      min-height: 0;
+      max-height: none;
       overflow-y: auto;
       overscroll-behavior: contain;
     }
@@ -5071,7 +5075,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.05.15-01';
+      const APP_VERSION = 'v2026.05.15-02';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
