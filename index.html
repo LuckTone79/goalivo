@@ -5071,7 +5071,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.05.13-02';
+      const APP_VERSION = 'v2026.05.14-01';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -6499,7 +6499,10 @@
           : state.timeBlocks.filter(b => b.date === dateStr).slice().sort((a, b) => U.timeToMinutes(a.startTime) - U.timeToMinutes(b.startTime));
 
         return blocks.filter(b => {
-          if (b.isTodo) return false;
+          if (b.isTodo) {
+            if (!state.calendarFilters.showTodos) return false;
+            if (!b.isAllDay) return false;
+          }
           if (!blockMatchesCalendarFilters(b)) return false;
           if (!blockVisibleOnCalendarDate(b, dateStr)) return false;
           if (b.isAllDay && !includeAllDay) return false;
@@ -8932,7 +8935,7 @@
         const d = state.viewDate;
         const dateStr = U.formatDate(d);
         const timedItems = assignTimedItemColumns(getTimedCalendarItemsForDate(dateStr, { ignoreMilestoneVisibility: true }));
-        const allDayBlocks = state.timeBlocks.filter(b => !b.isTodo && b.date === dateStr && !!b.isAllDay);
+        const allDayBlocks = getVisibleBlocksForDate(dateStr, { merged: true, includeAllDay: true, includeTimed: false });
         const allDayEvents = getVisibleExternalEventsForDate(dateStr, { includeAllDay: true, includeTimed: false });
         const boardStartMin = state.settings.workDayStart * 60;
         const boardEndMin = state.settings.workDayEnd * 60;
