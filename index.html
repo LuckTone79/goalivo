@@ -1218,7 +1218,7 @@
       width: 90%;
       max-width: 520px;
       max-height: 80vh;
-      overflow-y: auto;
+      overflow: hidden;
       transform: translateY(10px);
       transition: transform var(--tr-fast);
       -webkit-overflow-scrolling: touch;
@@ -3960,7 +3960,7 @@
   <div class="modal-overlay" id="blockModal">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title" id="blockModalTitle">시간 블록 추가</span>
+        <span class="modal-title" id="blockModalTitle">일정 추가</span>
         <button class="btn-icon" onclick="Goalivo.closeModal('blockModal')">✕</button>
       </div>
       <div class="modal-body">
@@ -5071,7 +5071,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.05.14-01';
+      const APP_VERSION = 'v2026.05.15-01';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -10433,7 +10433,7 @@
           document.getElementById('blockTimeRow').style.display = b.isAllDay ? 'none' : 'grid';
           document.getElementById('btnDeleteBlock').classList.remove('hidden');
         } else {
-          document.getElementById('blockModalTitle').textContent = '시간 블록 추가';
+          document.getElementById('blockModalTitle').textContent = '일정 추가';
           document.getElementById('blockEditId').value = '';
           document.getElementById('blockTitle').value = '';
           document.getElementById('blockGoalId').value = '';
