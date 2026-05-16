@@ -3685,6 +3685,8 @@
               title="할일 전체 목록">📝 할일</button>
             <button class="btn btn-sm btn-secondary" id="btnOpenSearch" style="font-size:11px;padding:4px 8px;"
               title="일정/할일 검색">🔍 검색</button>
+            <button class="btn btn-sm btn-secondary" id="btnOpenDday" style="font-size:11px;padding:4px 8px;"
+              title="D-day 관리">⏳ D-day</button>
             <button class="btn btn-sm btn-secondary" id="btnToggleTasks" onclick="Goalivo.toggleTaskIndicators()"
               style="font-size:11px;padding:4px 8px;" title="완료도 표시 토글">☐ 완료도</button>
           </div>
@@ -4580,6 +4582,20 @@
     </div>
   </div>
 
+  <!-- ========== MODAL: D-day ========== -->
+  <div class="modal-overlay" id="ddayModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">D-day 관리</span>
+        <button class="btn-icon" onclick="Goalivo.closeModal('ddayModal')">✕</button>
+      </div>
+      <div class="modal-body" id="ddayModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Goalivo.closeModal('ddayModal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== TOAST CONTAINER ========== -->
   <div class="toast-container" id="toastContainer"></div>
 
@@ -5042,6 +5058,7 @@
           holidayCountry: 'KR', // 'KR' or 'US'
           customCategories: [],  // user-added goal categories
           customTTCategories: [], // user-added timetable categories [{key, label, color}]
+          ddayItems: [], // [{id,title,date,color,memo,createdAt}]
           aiProvider: 'gio',
           aiApiKey: '',
           aiModel: 'claude-sonnet-4-20250514',
@@ -5075,7 +5092,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.05.15-02';
+      const APP_VERSION = 'v2026.05.16-01';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -5103,6 +5120,44 @@
         { name: '흑연', color: '#8A8A8A' },
         { name: '기본 색상', color: '#8A92D8' }
       ];
+
+      function normalizeDdayItem(item) {
+        if (!item || typeof item !== 'object') return null;
+        const date = String(item.date || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+        const title = String(item.title || '').trim();
+        if (!title) return null;
+        const id = Number(item.id);
+        return {
+          id: Number.isFinite(id) && id > 0 ? id : Date.now() + Math.floor(Math.random() * 1000),
+          title,
+          date,
+          color: String(item.color || '#8A92D8'),
+          memo: String(item.memo || ''),
+          createdAt: item.createdAt || new Date().toISOString()
+        };
+      }
+
+      function normalizeDdayItems(items) {
+        if (!Array.isArray(items)) return [];
+        return items.map(normalizeDdayItem).filter(Boolean);
+      }
+
+      function ensureDdayItems() {
+        state.settings.ddayItems = normalizeDdayItems(state.settings.ddayItems || []);
+      }
+
+      function getDdayLabel(dateStr) {
+        const diff = U.daysBetween(U.today(), dateStr);
+        if (diff > 0) return `D-${diff}`;
+        if (diff === 0) return 'D-Day';
+        return `D+${Math.abs(diff)}`;
+      }
+
+      function getDdayItemsForDate(dateStr) {
+        ensureDdayItems();
+        return (state.settings.ddayItems || []).filter(item => item.date === dateStr);
+      }
 
 
       /* ============================================================
@@ -7785,6 +7840,18 @@
           }
         });
 
+        (state.settings.ddayItems || []).forEach(item => {
+          if (includesQuery(item.title, item.date, item.memo, getDdayLabel(item.date))) {
+            results.push({
+              sortDate: item.date || '9999-99-99',
+              title: item.title || '(제목 없음)',
+              meta: `${item.date || '날짜 미정'} · ${getDdayLabel(item.date)}`,
+              desc: item.memo || 'D-day',
+              click: 'Goalivo.openDdayModal()'
+            });
+          }
+        });
+
         results.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
         if (results.length === 0) {
           body.innerHTML = '<div style="font-size:var(--fs-xs);color:var(--c-text-muted);">검색 결과가 없습니다.</div>';
@@ -7812,6 +7879,76 @@
         }
         if (state.lastSearchQuery) runSearch();
         requestAnimationFrame(() => input?.focus());
+      }
+
+      function renderDdayModal() {
+        const body = document.getElementById('ddayModalBody');
+        if (!body) return;
+        ensureDdayItems();
+        const items = [...(state.settings.ddayItems || [])].sort((a, b) => a.date.localeCompare(b.date));
+        const todayStr = U.formatDate(U.today());
+
+        body.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 130px auto;gap:8px;align-items:end;margin-bottom:12px;">
+            <div>
+              <label class="form-label">제목</label>
+              <input id="ddayTitle" class="form-input" placeholder="예: 프로젝트 출시" />
+            </div>
+            <div>
+              <label class="form-label">날짜</label>
+              <input id="ddayDate" class="form-input" type="date" value="${todayStr}" />
+            </div>
+            <button class="btn btn-primary" onclick="Goalivo.addDdayItem()">추가</button>
+          </div>
+          ${items.length === 0
+            ? '<div style="font-size:var(--fs-sm);color:var(--c-text-muted);">등록된 D-day가 없습니다.</div>'
+            : items.map(item => `
+              <div class="task-item" style="margin-bottom:8px;">
+                <div style="width:10px;height:10px;border-radius:50%;background:${item.color || '#8A92D8'};flex-shrink:0;"></div>
+                <div style="flex:1;min-width:0;">
+                  <div class="task-item-text">${U.esc(item.title)}</div>
+                  <div class="task-item-meta">${item.date} · ${getDdayLabel(item.date)}</div>
+                </div>
+                <button class="btn btn-xs btn-danger" onclick="Goalivo.deleteDdayItem(${item.id})">삭제</button>
+              </div>
+            `).join('')}
+        `;
+      }
+
+      function openDdayModal() {
+        renderDdayModal();
+        openModal('ddayModal');
+      }
+
+      function addDdayItem() {
+        ensureDdayItems();
+        const titleInput = document.getElementById('ddayTitle');
+        const dateInput = document.getElementById('ddayDate');
+        const title = String(titleInput?.value || '').trim();
+        const date = String(dateInput?.value || '').slice(0, 10);
+        if (!title) { toast('D-day 제목을 입력하세요', 'error'); return; }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('D-day 날짜를 선택하세요', 'error'); return; }
+        state.settings.ddayItems.unshift({
+          id: Date.now(),
+          title,
+          date,
+          color: '#8A92D8',
+          memo: '',
+          createdAt: new Date().toISOString()
+        });
+        persistSettingsAndSync();
+        renderDdayModal();
+        renderAll();
+        toast('D-day가 추가되었습니다', 'success');
+      }
+
+      function deleteDdayItem(id) {
+        ensureDdayItems();
+        state.settings.ddayItems = (state.settings.ddayItems || []).filter(item => item.id !== Number(id));
+        persistSettingsAndSync();
+        renderDdayModal();
+        renderAll();
+        toast('D-day가 삭제되었습니다', 'success');
       }
 
       /* ============================================================
@@ -8941,6 +9078,12 @@
         const timedItems = assignTimedItemColumns(getTimedCalendarItemsForDate(dateStr, { ignoreMilestoneVisibility: true }));
         const allDayBlocks = getVisibleBlocksForDate(dateStr, { merged: true, includeAllDay: true, includeTimed: false });
         const allDayEvents = getVisibleExternalEventsForDate(dateStr, { includeAllDay: true, includeTimed: false });
+        const allDayDdays = getDdayItemsForDate(dateStr).map(item => ({
+          kind: 'dday',
+          id: item.id,
+          title: `${getDdayLabel(item.date)} · ${item.title}`,
+          color: item.color || '#8A92D8'
+        }));
         const boardStartMin = state.settings.workDayStart * 60;
         const boardEndMin = state.settings.workDayEnd * 60;
         const boardHeight = Math.max(60, boardEndMin - boardStartMin);
@@ -8948,11 +9091,15 @@
         let html = '<div style="display:flex;flex-direction:column;height:100%;">';
         html += renderCalendarFilterSummary();
 
-        if (allDayBlocks.length > 0 || allDayEvents.length > 0) {
+        if (allDayBlocks.length > 0 || allDayEvents.length > 0 || allDayDdays.length > 0) {
           html += '<div class="day-allday-row">';
           html += '<div class="day-allday-label">하루 종일</div>';
           html += '<div class="day-allday-items">';
-          [...allDayEvents, ...allDayBlocks].slice(0, 4).forEach(item => {
+          [...allDayDdays, ...allDayEvents, ...allDayBlocks].slice(0, 4).forEach(item => {
+            if (item.kind === 'dday') {
+              html += `<div class="day-allday-item" style="background:${item.color};color:#fff;" title="${U.esc(item.title)}">${U.esc(item.title)}</div>`;
+              return;
+            }
             if (item.summary) {
               const color = getExternalRenderColor(item);
               html += `<div class="day-allday-item" style="background:${color};color:#fff;" title="${U.esc(item.summary)}" onclick="event.stopPropagation();Goalivo.openExternalEventDetail(${U.jsArg(item.eventId || '')}, ${U.jsArg(item.start || '')})">${U.esc(item.summary)}</div>`;
@@ -8961,7 +9108,7 @@
               html += `<div class="day-allday-item" style="background:${color};color:#fff;" title="${U.esc(item.title)}" onclick="Goalivo.openBlockDetail(${item.id})">${U.esc(item.title)}</div>`;
             }
           });
-          const total = allDayBlocks.length + allDayEvents.length;
+          const total = allDayBlocks.length + allDayEvents.length + allDayDdays.length;
           if (total > 4) html += `<div class="day-allday-more">+${total - 4}개 더</div>`;
           html += '</div></div>';
         }
@@ -9048,6 +9195,11 @@
 
         const allDayItemsByDay = days.map(d => {
           const dateStr = U.formatDate(d);
+          const ddayItems = getDdayItemsForDate(dateStr).map(item => ({
+            kind: 'dday',
+            title: `${getDdayLabel(item.date)} · ${item.title}`,
+            color: item.color || '#8A92D8'
+          }));
           const blockItems = getVisibleBlocksForDate(dateStr, { merged: true, includeAllDay: true, includeTimed: false }).map(b => ({
             kind: 'block',
             id: b.id,
@@ -9061,7 +9213,7 @@
             title: e.summary,
             color: getExternalRenderColor(e)
           }));
-          return [...externalItems, ...blockItems];
+          return [...ddayItems, ...externalItems, ...blockItems];
         });
 
         if (allDayItemsByDay.some(items => items.length > 0)) {
@@ -9072,7 +9224,9 @@
             const dateStr = U.formatDate(days[idx]);
             html += '<div class="week-allday-col">';
             items.slice(0, 2).forEach(item => {
-              if (item.kind === 'block') {
+              if (item.kind === 'dday') {
+                html += `<div class="week-allday-item" style="background:${item.color};color:#fff;">${U.esc(item.title)}</div>`;
+              } else if (item.kind === 'block') {
                 html += `<div class="week-allday-item" style="background:${item.color};color:#fff;" onclick="Goalivo.openBlockDetail(${item.id})">${U.esc(item.title)}</div>`;
               } else {
                 html += `<div class="week-allday-item" style="background:${item.color};color:#fff;" onclick="event.stopPropagation();Goalivo.openExternalEventDetail(${U.jsArg(item.eventId || '')}, ${U.jsArg(item.eventStart || '')})">${U.esc(item.title)}</div>`;
@@ -9279,8 +9433,17 @@
           const goalBars = state.goals.filter(g => (g.startDate === dateStr || g.targetDate === dateStr)).filter(goalMatchesCalendarFilters);
           const milestoneEnds = getVisibleMilestoneEndsForDate(dateStr);
           const extEvents = getVisibleExternalEventsForDate(dateStr, { includeAllDay: true, includeTimed: true });
+          const ddayItems = getDdayItemsForDate(dateStr);
           const colIdx = i % 7;
           const displayItems = [];
+
+          ddayItems.forEach(item => {
+            const color = item.color || '#8A92D8';
+            displayItems.push({
+              type: 'dday',
+              html: `<div class="cal-event cal-event-all-day" style="background:${color};border-left:0;font-size:9px;color:#fff;">${U.esc(`${getDdayLabel(item.date)} ${item.title}`)}</div>`
+            });
+          });
 
           goalBars.forEach(g => {
             const isStart = g.startDate === dateStr;
@@ -9320,7 +9483,7 @@
             displayItems.push({ type: 'block', html: `<div class="cal-event ${b.isAllDay ? 'cal-event-all-day' : ''}" draggable="true" ondragstart="Goalivo.startBlockDrag(${b.id}, event)" style="background:${bg};border-left:2px solid ${color};font-size:9px;cursor:pointer;color:${fg};" onclick="event.stopPropagation();Goalivo.viewDayDetail('${dateStr}')">${prefix}${U.esc(b.title)}</div>` });
           });
 
-          const itemPriority = { 'external-span': 0, external: 1, block: 2, goal: 3, milestone: 4 };
+          const itemPriority = { dday: 0, 'external-span': 1, external: 2, block: 3, goal: 4, milestone: 5 };
           displayItems.sort((a, b) => (itemPriority[a.type] ?? 9) - (itemPriority[b.type] ?? 9));
           const hasSpanEvent = displayItems.some(item => item.type === 'external-span');
           html += `<div class="cal-month-day ${hasSpanEvent ? 'has-span-event' : ''} ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isHoliday ? 'holiday' : ''}" data-date-cell="${dateStr}" onclick="Goalivo.onMonthDayClick('${dateStr}', event)" ondragover="Goalivo.allowBlockDrop(event)" ondrop="Goalivo.dropBlockOnDate('${dateStr}', event)">`;
@@ -13517,6 +13680,7 @@
           .filter(Boolean);
         if (!Array.isArray(state.settings.visionImages)) state.settings.visionImages = [];
         if (!Array.isArray(state.settings.goalReminderTimes)) state.settings.goalReminderTimes = [];
+        ensureDdayItems();
         try {
           const savedTodos = localStorage.getItem('goalivo_undated_todos');
           const parsedTodos = savedTodos ? JSON.parse(savedTodos) : [];
@@ -15425,6 +15589,7 @@ ${checkinLine}
         document.getElementById('btnOpenVisionBoard')?.addEventListener('click', () => openVisionBoardModal('goals'));
         document.getElementById('btnOpenTaskList')?.addEventListener('click', openTaskListModal);
         document.getElementById('btnOpenSearch')?.addEventListener('click', openSearchModal);
+        document.getElementById('btnOpenDday')?.addEventListener('click', openDdayModal);
 
         // Add goal
         document.getElementById('btnAddGoal').addEventListener('click', () => openGoalModal());
@@ -15953,6 +16118,9 @@ ${checkinLine}
         toggleTask,
         toggleTodayTodoOnly,
         openTaskListModal,
+        openDdayModal,
+        addDdayItem,
+        deleteDdayItem,
         addUndatedTodo,
         toggleUndatedTodo,
         deleteUndatedTodo,
