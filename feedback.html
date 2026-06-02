@@ -1,0 +1,1353 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goalivo ?쇰뱶諛?寃뚯떆??/title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: rgba(255, 255, 255, 0.92);
+      --panel-strong: #ffffff;
+      --text: #142033;
+      --muted: #607087;
+      --line: #d7e1ec;
+      --accent: #2d7ff9;
+      --accent-soft: #e9f2ff;
+      --success: #1f8b4c;
+      --warning: #c77612;
+      --danger: #cb3d3d;
+      --shadow: 0 18px 45px rgba(27, 52, 87, 0.12);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(45, 127, 249, 0.15), transparent 28%),
+        radial-gradient(circle at top right, rgba(53, 170, 123, 0.12), transparent 22%),
+        linear-gradient(180deg, #f8fbff 0%, #eef3f8 100%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font: inherit; }
+
+    .page {
+      width: min(1240px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 18px;
+      padding: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      border-radius: var(--radius-xl);
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(244, 248, 255, 0.92)),
+        linear-gradient(135deg, rgba(45, 127, 249, 0.08), rgba(53, 170, 123, 0.08));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(20, 32, 51, 0.05);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      margin: 10px 0 8px;
+      font-size: clamp(30px, 5vw, 44px);
+      line-height: 1.05;
+    }
+
+    .hero-copy {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .meta-card {
+      min-width: 180px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .meta-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .meta-value {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+      gap: 20px;
+      margin-top: 22px;
+      align-items: start;
+    }
+
+    .column {
+      display: grid;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .card {
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: var(--radius-lg);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 22px 0;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .card-note {
+      padding: 10px 22px 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .card-body {
+      padding: 20px 22px 22px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(135deg, #2d7ff9, #1e63d0);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(45, 127, 249, 0.28);
+    }
+    .btn-secondary {
+      background: #edf2f8;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    .btn-danger {
+      background: #fff2f2;
+      color: var(--danger);
+      border: 1px solid rgba(203, 61, 61, 0.18);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--line);
+    }
+    .btn-block {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef4fb;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 170px;
+      gap: 10px;
+    }
+
+    .field,
+    .field-file,
+    .auth-input,
+    .auth-select {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: rgba(249, 251, 255, 0.92);
+      color: var(--text);
+      outline: none;
+    }
+
+    .field:focus,
+    .field-file:focus,
+    .auth-input:focus,
+    .auth-select:focus {
+      border-color: rgba(45, 127, 249, 0.5);
+      box-shadow: 0 0 0 4px rgba(45, 127, 249, 0.12);
+    }
+
+    textarea.field {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .field-file {
+      padding: 12px 14px;
+    }
+
+    .preview-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .preview-item {
+      position: relative;
+      width: 82px;
+      height: 82px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .preview-remove {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 24px;
+      height: 24px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(20, 32, 51, 0.78);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .hint-box,
+    .setup-box,
+    .empty-box {
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .setup-box {
+      background: #fff9f1;
+      border-color: rgba(199, 118, 18, 0.22);
+      color: #8a5911;
+    }
+
+    .auth-tabs {
+      display: inline-flex;
+      padding: 4px;
+      border-radius: 999px;
+      background: #edf3f8;
+      border: 1px solid var(--line);
+      gap: 4px;
+    }
+
+    .auth-tab {
+      border: 0;
+      border-radius: 999px;
+      padding: 9px 14px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .auth-tab.active {
+      background: #fff;
+      color: var(--text);
+      box-shadow: 0 6px 14px rgba(20, 32, 51, 0.08);
+    }
+
+    .auth-stack {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .board-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .board-shell {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--panel-strong);
+    }
+
+    .board-head,
+    .board-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px 120px 128px;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+    }
+
+    .board-head {
+      background: #eef4fb;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .board-row {
+      width: 100%;
+      border: 0;
+      border-top: 1px solid #eff3f7;
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .board-row:hover,
+    .board-row.active {
+      background: linear-gradient(135deg, rgba(45, 127, 249, 0.08), rgba(45, 127, 249, 0.03));
+    }
+
+    .board-main {
+      min-width: 0;
+    }
+
+    .board-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .board-summary {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .board-meta {
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .detail-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-title {
+      font-size: clamp(22px, 3vw, 30px);
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    .detail-copy {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      background: #f8fbff;
+      border: 1px solid var(--line);
+      line-height: 1.8;
+      white-space: pre-wrap;
+    }
+
+    .detail-images {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .detail-images a {
+      display: block;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .detail-images img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .reply-box {
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      background: var(--accent-soft);
+      border: 1px solid rgba(45, 127, 249, 0.18);
+    }
+
+    .reply-head {
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .admin-panel {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(45, 127, 249, 0.15);
+      background: rgba(255, 255, 255, 0.88);
+    }
+
+    .split-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .footer-note {
+      margin-top: 22px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toast-wrap {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      display: grid;
+      gap: 10px;
+      z-index: 9999;
+    }
+
+    .toast {
+      min-width: 260px;
+      max-width: min(360px, calc(100vw - 36px));
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      box-shadow: var(--shadow);
+      background: rgba(20, 32, 51, 0.92);
+      color: #fff;
+      line-height: 1.5;
+    }
+
+    .toast.success { background: rgba(31, 139, 76, 0.94); }
+    .toast.warning { background: rgba(199, 118, 18, 0.96); }
+    .toast.error { background: rgba(203, 61, 61, 0.96); }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 16px, 100%);
+        padding-top: 16px;
+        padding-bottom: 28px;
+      }
+
+      .hero,
+      .card-head,
+      .card-note,
+      .card-body {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .hero {
+        padding-top: 20px;
+        padding-bottom: 20px;
+      }
+
+      .form-row,
+      .board-head,
+      .board-row {
+        grid-template-columns: 1fr;
+      }
+
+      .board-head {
+        display: none;
+      }
+
+      .board-row {
+        gap: 8px;
+      }
+
+      .board-meta::before {
+        content: attr(data-label);
+        display: inline-block;
+        min-width: 58px;
+        font-weight: 700;
+        color: var(--text);
+        margin-right: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="eyebrow">Goalivo Feedback Board</div>
+          <h1>?쇰뱶諛?寃뚯떆??/h1>
+          <div class="hero-copy">
+            ?ㅼ젙 ?덉뿉 臾살뼱?먯? ?딄퀬, ?쇰뱶諛깆쓣 ?꾪븳 蹂꾨룄 ?섏씠吏?먯꽌 湲???묒꽦?섍퀬 ?뺤씤?????덇쾶 遺꾨━?덉뒿?덈떎.
+            ?묒꽦??湲? ?묒꽦??蹂몄씤怨?愿由ъ옄留??대엺?????덇퀬, 紐⑸줉?먯꽌 湲???뚮윭 ?곸꽭 ?댁슜???뺤씤?????덉뒿?덈떎.
+          </div>
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-secondary" href="index.html">?깆쑝濡??뚯븘媛湲?/a>
+        </div>
+      </div>
+      <div class="hero-meta">
+        <div class="meta-card">
+          <div class="meta-label">?꾩옱 踰꾩쟾</div>
+          <div class="meta-value" id="appVersion">v2026.05.01-12</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label">?대엺 踰붿쐞</div>
+          <div class="meta-value">?묒꽦??蹂몄씤 + 愿由ъ옄</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label">寃뚯떆??諛⑹떇</div>
+          <div class="meta-value">紐⑸줉 ?대┃ ???곸꽭 蹂닿린</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="column">
+        <article class="card">
+          <div class="card-head">
+            <div class="card-title">怨꾩젙 ?곹깭</div>
+            <div class="badge-row" id="accountBadges"></div>
+          </div>
+          <div class="card-note" id="accountNote">
+            濡쒓렇???곹깭瑜??뺤씤?섎뒗 以묒엯?덈떎.
+          </div>
+          <div class="card-body" id="accountPanel"></div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <div class="card-title">湲?곌린</div>
+          </div>
+          <div class="card-note">
+            ?ㅻ쪟, 媛쒖꽑 ?쒖븞, UX 遺덊렪?ы빆???④꺼二쇱꽭?? 愿由ъ옄 ?듬?? 寃뚯떆湲 ?곸꽭?먯꽌 ?④퍡 ?뺤씤?????덉뒿?덈떎.
+          </div>
+          <div class="card-body" id="composerPanel"></div>
+        </article>
+      </div>
+
+      <div class="column">
+        <article class="card">
+          <div class="card-head">
+            <div class="card-title">寃뚯떆湲 紐⑸줉</div>
+            <div class="badge-row" id="boardScopeBadge"></div>
+          </div>
+          <div class="card-body">
+            <div id="boardPanel"></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <div class="card-title">寃뚯떆湲 ?곸꽭</div>
+          </div>
+          <div class="card-body" id="detailPanel"></div>
+        </article>
+      </div>
+    </section>
+
+    <div class="footer-note">
+      Goalivo v2026.05.01-12
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <script>
+    const APP_VERSION = 'v2026.06.03-02';
+    const FEEDBACK_ADMIN_EMAIL = 'luck2s7912@gmail.com';
+    const state = {
+      supa: null,
+      currentUser: null,
+      posts: [],
+      pendingImages: [],
+      selectedPostId: new URLSearchParams(window.location.search).get('post') || '',
+      authMode: 'login',
+      loadingPosts: false,
+      draft: {
+        title: '',
+        body: '',
+        category: 'bug'
+      }
+    };
+
+    const el = {
+      accountBadges: document.getElementById('accountBadges'),
+      accountNote: document.getElementById('accountNote'),
+      accountPanel: document.getElementById('accountPanel'),
+      composerPanel: document.getElementById('composerPanel'),
+      boardScopeBadge: document.getElementById('boardScopeBadge'),
+      boardPanel: document.getElementById('boardPanel'),
+      detailPanel: document.getElementById('detailPanel'),
+      toastWrap: document.getElementById('toastWrap'),
+      appVersion: document.getElementById('appVersion')
+    };
+
+    el.appVersion.textContent = APP_VERSION;
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function isAdmin() {
+      return String(state.currentUser?.email || '').toLowerCase() === FEEDBACK_ADMIN_EMAIL;
+    }
+
+    function statusLabel(status) {
+      const map = {
+        new: '?묒닔',
+        reviewing: '寃?좎쨷',
+        planned: '諛섏쁺 ?덉젙',
+        answered: '?듬? ?꾨즺',
+        closed: '醫낅즺'
+      };
+      return map[status] || '?묒닔';
+    }
+
+    function categoryLabel(category) {
+      const map = {
+        bug: '?ㅻ쪟',
+        ux: '?ъ슜??,
+        feature: '湲곕뒫 ?쒖븞',
+        content: '臾멸뎄/肄섑뀗痢?,
+        other: '湲고?'
+      };
+      return map[category] || '湲고?';
+    }
+
+    function formatDate(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).slice(0, 16).replace('T', ' ');
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function parseImages(value) {
+      if (Array.isArray(value)) return value;
+      if (!value) return [];
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function getSupabaseProjectRef() {
+      try {
+        const url = state.supa?.supabaseUrl || '';
+        return new URL(url).hostname.split('.')[0] || '';
+      } catch (error) {
+        return '';
+      }
+    }
+
+    function formatSetupMessage(message = '') {
+      const raw = String(message || '').trim();
+      const projectRef = getSupabaseProjectRef();
+      if (raw.includes('PGRST205') || raw.includes("Could not find the table 'public.feedback_posts'")) {
+        const parts = [
+          '?꾩옱 ?곌껐??Supabase ?꾨줈?앺듃??`public.feedback_posts` ?뚯씠釉붿씠 ?놁뒿?덈떎.',
+          projectRef ? `?꾨줈?앺듃 ID: ${projectRef}` : '',
+          '愿由ъ옄?????꾨줈?앺듃??Supabase SQL Editor?먯꽌 `supabase-feedback.sql` ?꾩껜瑜???踰??ㅽ뻾?댁＜?몄슂.'
+        ].filter(Boolean);
+        return parts.join('<br>');
+      }
+      return escapeHtml(raw);
+    }
+
+    function showSetupMessage(message) {
+      return `<div class="setup-box">${formatSetupMessage(message)}</div>`;
+    }
+
+    function toast(message, type = 'info') {
+      const node = document.createElement('div');
+      node.className = `toast ${type}`;
+      node.textContent = message;
+      el.toastWrap.appendChild(node);
+      window.setTimeout(() => {
+        node.remove();
+      }, 3200);
+    }
+
+    function updateSelectedUrl(postId) {
+      const url = new URL(window.location.href);
+      if (postId) {
+        url.searchParams.set('post', postId);
+      } else {
+        url.searchParams.delete('post');
+      }
+      window.history.replaceState({}, '', url);
+    }
+
+    function selectPost(postId) {
+      state.selectedPostId = postId || '';
+      updateSelectedUrl(state.selectedPostId);
+      renderBoard();
+      renderDetail();
+    }
+
+    function getSelectedPost() {
+      return state.posts.find(post => post.id === state.selectedPostId) || null;
+    }
+
+    function setAuthMode(mode) {
+      state.authMode = mode === 'signup' ? 'signup' : 'login';
+      renderAccountPanel();
+    }
+
+    function captureDraft() {
+      const titleEl = document.getElementById('feedbackTitle');
+      const bodyEl = document.getElementById('feedbackBody');
+      const categoryEl = document.getElementById('feedbackCategory');
+      if (titleEl) state.draft.title = titleEl.value;
+      if (bodyEl) state.draft.body = bodyEl.value;
+      if (categoryEl) state.draft.category = categoryEl.value || 'bug';
+    }
+
+    async function initSupabase() {
+      try {
+        const response = await fetch('/api/config');
+        if (!response.ok) throw new Error('?ㅼ젙 ?묐떟??媛?몄삤吏 紐삵뻽?듬땲??');
+        const config = await response.json();
+        if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase?.createClient) {
+          throw new Error('Supabase ?ㅼ젙??鍮꾩뼱 ?덉뒿?덈떎.');
+        }
+
+        state.supa = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+        const { data: { session } } = await state.supa.auth.getSession();
+        state.currentUser = session?.user || null;
+        state.supa.auth.onAuthStateChange((_event, sessionInfo) => {
+          state.currentUser = sessionInfo?.user || null;
+          if (!state.currentUser) {
+            state.posts = [];
+            state.selectedPostId = '';
+            updateSelectedUrl('');
+          }
+          renderAll();
+          if (state.currentUser) {
+            loadPosts();
+          }
+        });
+      } catch (error) {
+        console.error('[Goalivo Feedback] supabase init failed:', error);
+        toast('?쇰뱶諛??ㅼ젙??遺덈윭?ㅼ? 紐삵뻽?듬땲??, 'error');
+      }
+    }
+
+    async function loginWithEmail() {
+      if (!state.supa) {
+        toast('?몄쬆 ?쒕퉬?ㅻ? ?ъ슜?????놁뒿?덈떎', 'error');
+        return;
+      }
+      const email = document.getElementById('authEmail')?.value.trim();
+      const password = document.getElementById('authPassword')?.value;
+      if (!email || !password) {
+        toast('?대찓?쇨낵 鍮꾨?踰덊샇瑜??낅젰?댁＜?몄슂', 'warning');
+        return;
+      }
+
+      const { error } = await state.supa.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast(`濡쒓렇???ㅽ뙣: ${error.message}`, 'error');
+        return;
+      }
+      toast('濡쒓렇?몃릺?덉뒿?덈떎', 'success');
+    }
+
+    async function signupWithEmail() {
+      if (!state.supa) {
+        toast('?몄쬆 ?쒕퉬?ㅻ? ?ъ슜?????놁뒿?덈떎', 'error');
+        return;
+      }
+      const email = document.getElementById('authEmail')?.value.trim();
+      const password = document.getElementById('authPassword')?.value;
+      const confirm = document.getElementById('authPasswordConfirm')?.value;
+      if (!email || !password) {
+        toast('?대찓?쇨낵 鍮꾨?踰덊샇瑜??낅젰?댁＜?몄슂', 'warning');
+        return;
+      }
+      if (password.length < 8) {
+        toast('鍮꾨?踰덊샇??8???댁긽?댁뼱???⑸땲??, 'warning');
+        return;
+      }
+      if (password !== confirm) {
+        toast('鍮꾨?踰덊샇媛 ?쇱튂?섏? ?딆뒿?덈떎', 'error');
+        return;
+      }
+
+      const { error } = await state.supa.auth.signUp({ email, password });
+      if (error) {
+        toast(`?뚯썝媛???ㅽ뙣: ${error.message}`, 'error');
+        return;
+      }
+      toast('?몄쬆 ?대찓?쇱쓣 蹂대깉?듬땲?? 硫붿씪 ?뺤씤 ??濡쒓렇?명빐二쇱꽭??', 'success');
+      setAuthMode('login');
+    }
+
+    async function loginWithGoogle() {
+      if (!state.supa) {
+        toast('?몄쬆 ?쒕퉬?ㅻ? ?ъ슜?????놁뒿?덈떎', 'error');
+        return;
+      }
+      const { error } = await state.supa.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}${window.location.pathname}`
+        }
+      });
+      if (error) {
+        toast(`Google 濡쒓렇???ㅽ뙣: ${error.message}`, 'error');
+      }
+    }
+
+    async function logout() {
+      if (!state.supa) return;
+      await state.supa.auth.signOut();
+      toast('濡쒓렇?꾩썐?섏뿀?듬땲??, 'success');
+    }
+
+    async function compressImage(file) {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+
+      const maxSide = 1200;
+      const ratio = Math.min(1, maxSide / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * ratio));
+      canvas.height = Math.max(1, Math.round(image.height * ratio));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      return {
+        name: file.name,
+        type: 'image/jpeg',
+        size: file.size,
+        dataUrl: canvas.toDataURL('image/jpeg', 0.78),
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    async function handleImages(files) {
+      captureDraft();
+      const list = Array.from(files || [])
+        .filter(file => file.type.startsWith('image/'))
+        .slice(0, 6);
+
+      if (list.length === 0) {
+        state.pendingImages = [];
+        renderComposerPanel();
+        return;
+      }
+
+      toast('?대?吏瑜?以鍮꾪븯??以묒엯?덈떎...', 'info');
+      try {
+        state.pendingImages = [];
+        for (const file of list) {
+          state.pendingImages.push(await compressImage(file));
+        }
+        renderComposerPanel();
+      } catch (error) {
+        console.error('[Goalivo Feedback] image prepare failed:', error);
+        toast('?대?吏 泥섎━???ㅽ뙣?덉뒿?덈떎', 'error');
+      }
+    }
+
+    function removeImage(index) {
+      captureDraft();
+      state.pendingImages.splice(index, 1);
+      renderComposerPanel();
+    }
+
+    async function submitPost() {
+      if (!state.supa) {
+        toast('?쇰뱶諛???μ냼瑜??ъ슜?????놁뒿?덈떎', 'error');
+        return;
+      }
+      if (!state.currentUser) {
+        toast('濡쒓렇????湲???묒꽦?????덉뒿?덈떎', 'warning');
+        return;
+      }
+
+      const titleEl = document.getElementById('feedbackTitle');
+      const bodyEl = document.getElementById('feedbackBody');
+      const categoryEl = document.getElementById('feedbackCategory');
+      captureDraft();
+      const body = String(bodyEl?.value || '').trim();
+      const title = String(titleEl?.value || '').trim() || body.slice(0, 32) || '?쇰뱶諛?;
+      if (!body) {
+        toast('?쇰뱶諛??댁슜???낅젰?댁＜?몄슂', 'warning');
+        return;
+      }
+
+      const payload = {
+        user_id: state.currentUser.id,
+        user_email: state.currentUser.email,
+        title,
+        body,
+        category: categoryEl?.value || 'other',
+        status: 'new',
+        images_json: state.pendingImages
+      };
+
+      const { data, error } = await state.supa
+        .from('feedback_posts')
+        .insert(payload)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('[Goalivo Feedback] submit failed:', error);
+        el.boardPanel.innerHTML = showSetupMessage(error.message);
+        const suffix = error.code === 'PGRST205' ? ` (${getSupabaseProjectRef()})` : '';
+        toast(`?쇰뱶諛?????ㅽ뙣: ${error.code || 'unknown'}${suffix}`, 'error');
+        return;
+      }
+
+      if (titleEl) titleEl.value = '';
+      if (bodyEl) bodyEl.value = '';
+      const fileEl = document.getElementById('feedbackImages');
+      if (fileEl) fileEl.value = '';
+      state.pendingImages = [];
+      state.draft = { title: '', body: '', category: 'bug' };
+      toast('?쇰뱶諛깆씠 ?깅줉?섏뿀?듬땲??, 'success');
+      await loadPosts(data?.id || '');
+      renderComposerPanel();
+    }
+
+    async function loadPosts(preferredId = '') {
+      if (!state.currentUser) {
+        state.posts = [];
+        renderBoard();
+        renderDetail();
+        return;
+      }
+      if (!state.supa) {
+        el.boardPanel.innerHTML = showSetupMessage('Supabase ?곌껐???놁뒿?덈떎.');
+        return;
+      }
+
+      state.loadingPosts = true;
+      renderBoard();
+
+      let query = state.supa
+        .from('feedback_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!isAdmin()) {
+        query = query.eq('user_id', state.currentUser.id);
+      }
+
+      const { data, error } = await query.limit(isAdmin() ? 200 : 100);
+      state.loadingPosts = false;
+
+      if (error) {
+        console.error('[Goalivo Feedback] load failed:', error);
+        el.boardPanel.innerHTML = showSetupMessage(error.message);
+        el.detailPanel.innerHTML = '<div class="empty-box">寃뚯떆湲??遺덈윭?ㅼ? 紐삵뻽?듬땲??</div>';
+        return;
+      }
+
+      state.posts = data || [];
+      const validId = preferredId || state.selectedPostId;
+      if (validId && state.posts.some(post => post.id === validId)) {
+        state.selectedPostId = validId;
+      } else {
+        state.selectedPostId = state.posts[0]?.id || '';
+      }
+      updateSelectedUrl(state.selectedPostId);
+      renderBoard();
+      renderDetail();
+    }
+
+    async function saveAdminReply() {
+      if (!isAdmin() || !state.currentUser || !state.selectedPostId) return;
+      const reply = String(document.getElementById('adminReply')?.value || '').trim();
+      const status = document.getElementById('adminStatus')?.value || 'reviewing';
+      const patch = {
+        status: reply ? (status === 'new' ? 'answered' : status) : status,
+        admin_reply: reply || null,
+        admin_reply_by: state.currentUser.id,
+        admin_reply_email: state.currentUser.email,
+        admin_replied_at: reply ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await state.supa
+        .from('feedback_posts')
+        .update(patch)
+        .eq('id', state.selectedPostId);
+
+      if (error) {
+        console.error('[Goalivo Feedback] admin reply failed:', error);
+        toast('愿由ъ옄 ?듬? ??μ뿉 ?ㅽ뙣?덉뒿?덈떎', 'error');
+        return;
+      }
+
+      toast('愿由ъ옄 ?듬?????λ릺?덉뒿?덈떎', 'success');
+      await loadPosts(state.selectedPostId);
+    }
+
+    function renderAccountPanel() {
+      if (!state.currentUser) {
+        el.accountBadges.innerHTML = '<span class="badge">濡쒓렇???꾩슂</span>';
+        el.accountNote.textContent = '?쇰뱶諛?寃뚯떆?먯? 濡쒓렇?????댁슜?????덉뒿?덈떎. 寃뚯떆湲? ?묒꽦??蹂몄씤怨?愿由ъ옄留?蹂????덉뒿?덈떎.';
+        el.accountPanel.innerHTML = `
+          <div class="auth-tabs">
+            <button class="auth-tab ${state.authMode === 'login' ? 'active' : ''}" onclick="FeedbackBoard.setAuthMode('login')">濡쒓렇??/button>
+            <button class="auth-tab ${state.authMode === 'signup' ? 'active' : ''}" onclick="FeedbackBoard.setAuthMode('signup')">?뚯썝媛??/button>
+          </div>
+          <div class="auth-stack">
+            <input class="auth-input" id="authEmail" type="email" placeholder="?대찓??>
+            <input class="auth-input" id="authPassword" type="password" placeholder="鍮꾨?踰덊샇">
+            ${state.authMode === 'signup' ? '<input class="auth-input" id="authPasswordConfirm" type="password" placeholder="鍮꾨?踰덊샇 ?뺤씤">' : ''}
+            <button class="btn btn-primary btn-block" onclick="FeedbackBoard.${state.authMode === 'signup' ? 'signupWithEmail' : 'loginWithEmail'}()">
+              ${state.authMode === 'signup' ? '?대찓?쇰줈 ?뚯썝媛?? : '?대찓?쇰줈 濡쒓렇??}
+            </button>
+            <button class="btn btn-secondary btn-block" onclick="FeedbackBoard.loginWithGoogle()">Google濡?濡쒓렇??/button>
+          </div>
+        `;
+        return;
+      }
+
+      el.accountBadges.innerHTML = `
+        <span class="badge">${escapeHtml(state.currentUser.email || '')}</span>
+        <span class="badge">${isAdmin() ? '愿由ъ옄 紐⑤뱶' : '??湲 蹂닿린'}</span>
+      `;
+      el.accountNote.textContent = isAdmin()
+        ? '愿由ъ옄 怨꾩젙?쇰줈 ?묒냽 以묒엯?덈떎. ?꾩껜 湲 紐⑸줉怨??듬? ?곹깭瑜??뺤씤?????덉뒿?덈떎.'
+        : '?닿? ?묒꽦??湲留?寃뚯떆??紐⑸줉??蹂댁엯?덈떎. 紐⑸줉?먯꽌 湲???뚮윭 ?곸꽭? 愿由ъ옄 ?듬????뺤씤?섏꽭??';
+      el.accountPanel.innerHTML = `
+        <div class="hint-box">
+          <div style="font-weight:700;color:var(--text);margin-bottom:6px;">濡쒓렇???꾨즺</div>
+          <div>${escapeHtml(state.currentUser.email || '')}</div>
+          <div style="margin-top:12px;">
+            <button class="btn btn-danger" onclick="FeedbackBoard.logout()">濡쒓렇?꾩썐</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderComposerPanel() {
+      if (!state.currentUser) {
+        el.composerPanel.innerHTML = `
+          <div class="empty-box">
+            ?쇰뱶諛?湲?곌린??濡쒓렇?????ъ슜?????덉뒿?덈떎.
+          </div>
+        `;
+        return;
+      }
+
+      el.composerPanel.innerHTML = `
+        <div class="form-grid">
+          <div class="form-row">
+            <input class="field" id="feedbackTitle" placeholder="?쒕ぉ" value="${escapeHtml(state.draft.title)}" oninput="FeedbackBoard.captureDraft()">
+            <select class="field" id="feedbackCategory" onchange="FeedbackBoard.captureDraft()">
+              <option value="bug" ${state.draft.category === 'bug' ? 'selected' : ''}>?ㅻ쪟</option>
+              <option value="ux" ${state.draft.category === 'ux' ? 'selected' : ''}>?ъ슜??/option>
+              <option value="feature" ${state.draft.category === 'feature' ? 'selected' : ''}>湲곕뒫 ?쒖븞</option>
+              <option value="content" ${state.draft.category === 'content' ? 'selected' : ''}>臾멸뎄/肄섑뀗痢?/option>
+              <option value="other" ${state.draft.category === 'other' ? 'selected' : ''}>湲고?</option>
+            </select>
+          </div>
+          <textarea class="field" id="feedbackBody" placeholder="?대뼡 ?먯씠 遺덊렪?덈뒗吏, ?대뼡 ?붾㈃?먯꽌 ?대뼡 ?쒖꽌濡?諛쒖깮?덈뒗吏 ?곸뼱二쇰㈃ ?닿껐??鍮⑤씪吏묐땲??" oninput="FeedbackBoard.captureDraft()">${escapeHtml(state.draft.body)}</textarea>
+          <input class="field-file" id="feedbackImages" type="file" accept="image/*" multiple onchange="FeedbackBoard.handleImages(this.files)">
+          <div class="preview-grid">
+            ${state.pendingImages.map((image, index) => `
+              <div class="preview-item">
+                <img src="${image.dataUrl}" alt="">
+                <button class="preview-remove" type="button" onclick="FeedbackBoard.removeImage(${index})">횞</button>
+              </div>
+            `).join('')}
+          </div>
+          <div class="split-actions">
+            <button class="btn btn-primary" onclick="FeedbackBoard.submitPost()">湲 ?깅줉</button>
+            <span class="badge">${isAdmin() ? '愿由ъ옄 ?꾩껜 蹂닿린' : '??湲留??쒖떆'}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBoard() {
+      el.boardScopeBadge.innerHTML = state.currentUser
+        ? `<span class="badge">${isAdmin() ? '?꾩껜 湲 蹂닿린' : '?닿? ??湲留?蹂닿린'}</span>`
+        : '<span class="badge">濡쒓렇?????대엺 媛??/span>';
+
+      if (!state.currentUser) {
+        el.boardPanel.innerHTML = '<div class="empty-box">濡쒓렇?명븯硫?寃뚯떆湲 紐⑸줉???쒖떆?⑸땲??</div>';
+        return;
+      }
+
+      if (state.loadingPosts) {
+        el.boardPanel.innerHTML = '<div class="empty-box">寃뚯떆湲??遺덈윭?ㅻ뒗 以묒엯?덈떎...</div>';
+        return;
+      }
+
+      if (state.posts.length === 0) {
+        el.boardPanel.innerHTML = '<div class="empty-box">?꾩쭅 ?깅줉???쇰뱶諛깆씠 ?놁뒿?덈떎. 泥?湲???④꺼二쇱꽭??</div>';
+        return;
+      }
+
+      el.boardPanel.innerHTML = `
+        <div class="board-toolbar">
+          <div class="hint-box" style="padding:10px 14px;">寃뚯떆湲???꾨Ⅴ硫??ㅻⅨ履??곸꽭 ?곸뿭?먯꽌 ?꾩껜 ?댁슜怨??대?吏, 愿由ъ옄 ?듬????뺤씤?????덉뒿?덈떎.</div>
+        </div>
+        <div class="board-shell">
+          <div class="board-head">
+            <div>?쒕ぉ</div>
+            <div>遺꾨쪟</div>
+            <div>?곹깭</div>
+            <div>${isAdmin() ? '?묒꽦??/ ?묒꽦?? : '?묒꽦??}</div>
+          </div>
+          ${state.posts.map(post => {
+            const isActive = post.id === state.selectedPostId;
+            const meta = isAdmin()
+              ? `${escapeHtml(post.user_email || '-')}\n${formatDate(post.created_at)}`
+              : formatDate(post.created_at);
+            return `
+              <button class="board-row ${isActive ? 'active' : ''}" onclick="FeedbackBoard.selectPost('${post.id}')">
+                <div class="board-main">
+                  <div class="board-title">${escapeHtml(post.title || '?쇰뱶諛?)}</div>
+                  <div class="board-summary">${escapeHtml(String(post.body || '').replace(/\s+/g, ' '))}</div>
+                </div>
+                <div class="board-meta" data-label="遺꾨쪟">${categoryLabel(post.category)}</div>
+                <div class="board-meta" data-label="?곹깭">${statusLabel(post.status)}</div>
+                <div class="board-meta" data-label="${isAdmin() ? '?묒꽦?? : '?묒꽦??}" style="white-space:pre-line;">${meta}</div>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function renderDetail() {
+      if (!state.currentUser) {
+        el.detailPanel.innerHTML = '<div class="empty-box">濡쒓렇????寃뚯떆湲 ?곸꽭瑜?蹂????덉뒿?덈떎.</div>';
+        return;
+      }
+
+      const post = getSelectedPost();
+      if (!post) {
+        el.detailPanel.innerHTML = '<div class="empty-box">?쇱そ 紐⑸줉?먯꽌 寃뚯떆湲???좏깮?댁＜?몄슂.</div>';
+        return;
+      }
+
+      const images = parseImages(post.images_json);
+      const adminEditor = isAdmin() ? `
+        <div class="admin-panel">
+          <div style="font-weight:800;">愿由ъ옄 ?듬? 諛??곹깭 愿由?/div>
+          <select class="field" id="adminStatus">
+            ${['new', 'reviewing', 'planned', 'answered', 'closed'].map(status => `
+              <option value="${status}" ${post.status === status ? 'selected' : ''}>${statusLabel(status)}</option>
+            `).join('')}
+          </select>
+          <textarea class="field" id="adminReply" style="min-height:120px;" placeholder="愿由ъ옄 ?듬????낅젰?섏꽭??">${escapeHtml(post.admin_reply || '')}</textarea>
+          <div class="split-actions">
+            <button class="btn btn-primary" onclick="FeedbackBoard.saveAdminReply()">?듬? ???/button>
+          </div>
+        </div>
+      ` : '';
+
+      el.detailPanel.innerHTML = `
+        <div class="detail-shell">
+          <div>
+            <h2 class="detail-title">${escapeHtml(post.title || '?쇰뱶諛?)}</h2>
+            <div class="badge-row" style="margin-top:12px;">
+              <span class="badge">${categoryLabel(post.category)}</span>
+              <span class="badge">${statusLabel(post.status)}</span>
+              <span class="badge">${formatDate(post.created_at)}</span>
+              ${isAdmin() ? `<span class="badge">${escapeHtml(post.user_email || '')}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="detail-copy">${escapeHtml(post.body || '')}</div>
+
+          ${images.length ? `
+            <div class="detail-images">
+              ${images.map(image => `
+                <a href="${image.dataUrl}" target="_blank" rel="noopener noreferrer">
+                  <img src="${image.dataUrl}" alt="">
+                </a>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${post.admin_reply ? `
+            <div class="reply-box">
+              <div class="reply-head">愿由ъ옄 ?듬? 쨌 ${formatDate(post.admin_replied_at)}</div>
+              <div style="white-space:pre-wrap;line-height:1.75;">${escapeHtml(post.admin_reply)}</div>
+            </div>
+          ` : '<div class="hint-box">?꾩쭅 ?깅줉??愿由ъ옄 ?듬????놁뒿?덈떎.</div>'}
+
+          ${adminEditor}
+        </div>
+      `;
+    }
+
+    function renderAll() {
+      renderAccountPanel();
+      renderComposerPanel();
+      renderBoard();
+      renderDetail();
+    }
+
+    async function init() {
+      renderAll();
+      await initSupabase();
+      renderAll();
+      if (state.currentUser) {
+        await loadPosts();
+      }
+    }
+
+    window.FeedbackBoard = {
+      handleImages,
+      removeImage,
+      submitPost,
+      selectPost,
+      setAuthMode,
+      loginWithEmail,
+      signupWithEmail,
+      loginWithGoogle,
+      logout,
+      saveAdminReply,
+      captureDraft
+    };
+
+    init();
+  </script>
+</body>
+</html>

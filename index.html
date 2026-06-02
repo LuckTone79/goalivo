@@ -1126,43 +1126,39 @@
       padding: 8px;
     }
 
-    .vision-card-toolbar-wrap {
-      overflow-x: auto;
-      overflow-y: hidden;
-      -webkit-overflow-scrolling: touch;
+    .vision-card-toolbar {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 4px;
       margin-bottom: 6px;
     }
 
-    .vision-card-toolbar {
+    .vision-card-toolbar-row {
       display: flex;
       align-items: center;
       gap: 4px;
-      flex-wrap: nowrap;
-      min-width: max-content;
-      white-space: nowrap;
+      min-width: 0;
     }
 
     .vision-card-toolbar .form-input,
     .vision-card-toolbar .form-select {
-      height: 30px;
+      height: 28px;
       font-size: 11px;
       min-width: 0;
     }
 
     .vision-card-title-input {
-      width: 136px;
-      min-width: 136px;
+      flex: 1 1 auto;
     }
 
     .vision-card-variant-select {
-      width: 118px;
-      min-width: 118px;
+      flex: 1 1 auto;
       padding: 4px 28px 4px 8px;
     }
 
     .vision-card-toolbar .btn {
-      height: 30px;
-      padding: 3px 8px;
+      height: 28px;
+      padding: 2px 7px;
       font-size: 10px;
       white-space: nowrap;
       flex: 0 0 auto;
@@ -5150,7 +5146,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.06.03-01';
+      const APP_VERSION = 'v2026.06.03-02';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -11745,18 +11741,20 @@
                 const activeDataUrl = getVisionImageActiveDataUrl(img);
                 const variants = Array.isArray(img.variants) ? img.variants : [];
                 return `<div class="vision-card">
-                  <div class="vision-card-toolbar-wrap">
                     <div class="vision-card-toolbar">
+                      <div class="vision-card-toolbar-row">
                       <input id="visionTitle_${idx}" class="form-input vision-card-title-input" value="${U.esc(img.title || '')}" placeholder="이미지 제목">
                       <button class="btn btn-xs btn-primary" onclick="Goalivo.saveVisionImageTitle(${idx})">저장</button>
-                      <select id="visionVariant_${idx}" class="form-select vision-card-variant-select">
-                        ${variants.map((variant, variantIdx) => `<option value="${U.esc(variant.id)}" ${variant.id === img.activeVariantId ? 'selected' : ''}>${U.esc(getVisionImageVariantLabel(variant, variantIdx))}</option>`).join('')}
-                      </select>
-                      <button class="btn btn-xs btn-primary" onclick="Goalivo.applyVisionVariantSelection(${idx})">적용</button>
                       <button class="btn btn-xs btn-secondary" onclick="Goalivo.openVisionImageGenerator(${U.jsArg(img.id)})">AI 수정</button>
                       <button class="btn btn-xs btn-danger" onclick="Goalivo.deleteVisionImage(${idx})">삭제</button>
+                      </div>
+                      <div class="vision-card-toolbar-row">
+                        <select id="visionVariant_${idx}" class="form-select vision-card-variant-select">
+                          ${variants.map((variant, variantIdx) => `<option value="${U.esc(variant.id)}" ${variant.id === img.activeVariantId ? 'selected' : ''}>${U.esc(getVisionImageVariantLabel(variant, variantIdx))}</option>`).join('')}
+                        </select>
+                        <button class="btn btn-xs btn-primary" onclick="Goalivo.applyVisionVariantSelection(${idx})">적용</button>
+                      </div>
                     </div>
-                  </div>
                   <div style="font-size:10px;color:var(--c-text-muted);margin-bottom:6px;">현재 사용: ${U.esc(getVisionImageVariantLabel(activeVariant, variants.findIndex(v => v.id === activeVariant?.id)))}</div>
                   <img src="${activeDataUrl}" alt="vision-${idx}" onclick="Goalivo.openVisionImagePreview(${idx})" class="vision-card-preview">
                 </div>`;
