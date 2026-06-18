@@ -7618,6 +7618,7 @@
 
       function persistUndatedTodos() {
         localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos || []));
+        markCloudDirty();
       }
 
       async function addUndatedTodo() {
@@ -15305,6 +15306,7 @@ ${checkinLine}
           goalProfiles: await db.goalProfiles.toArray(),
           aiReports: db.aiReports ? await db.aiReports.toArray() : [],
           reviewCheckpoints: await db.reviewCheckpoints.toArray(),
+          undatedTodos: state.undatedTodos || [],
           settings: getCloudSafeSettings(),
           exportedAt: new Date().toISOString()
         };
@@ -15336,6 +15338,10 @@ ${checkinLine}
           if (data.goalProfiles) { await db.goalProfiles.clear(); await db.goalProfiles.bulkAdd(data.goalProfiles); }
           if (data.aiReports && db.aiReports) { await db.aiReports.clear(); await db.aiReports.bulkAdd(data.aiReports); }
           if (data.reviewCheckpoints) { await db.reviewCheckpoints.clear(); await db.reviewCheckpoints.bulkAdd(data.reviewCheckpoints); }
+          if (Array.isArray(data.undatedTodos)) {
+            state.undatedTodos = data.undatedTodos;
+            localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos));
+          }
           if (data.settings) {
             const importedSettings = { ...data.settings };
             delete importedSettings.gcalToken;
@@ -15377,6 +15383,7 @@ ${checkinLine}
             aiReports: db.aiReports ? await db.aiReports.toArray() : [],
             reviewCheckpoints: await db.reviewCheckpoints.toArray(),
             externalEvents: await db.externalEvents.toArray(),
+            undatedTodos: state.undatedTodos || [],
             settings: getCloudSafeSettings(),
             exportedAt: new Date().toISOString()
           };
@@ -15432,7 +15439,8 @@ ${checkinLine}
             goalProfiles: localGoalProfiles.length,
             aiReports: localAiReports.length,
             reviewCheckpoints: localReviewCheckpoints.length,
-            externalEvents: localExternalEvents.length
+            externalEvents: localExternalEvents.length,
+            undatedTodos: Array.isArray(state.undatedTodos) ? state.undatedTodos.length : 0
           };
           const localTotal = Object.values(localCounts).reduce((s, n) => s + (n || 0), 0);
 
@@ -15456,7 +15464,8 @@ ${checkinLine}
             goalProfiles: Array.isArray(cloudData.goalProfiles) ? cloudData.goalProfiles.length : -1,
             aiReports: Array.isArray(cloudData.aiReports) ? cloudData.aiReports.length : -1,
             reviewCheckpoints: Array.isArray(cloudData.reviewCheckpoints) ? cloudData.reviewCheckpoints.length : -1,
-            externalEvents: Array.isArray(cloudData.externalEvents) ? cloudData.externalEvents.length : -1
+            externalEvents: Array.isArray(cloudData.externalEvents) ? cloudData.externalEvents.length : -1,
+            undatedTodos: Array.isArray(cloudData.undatedTodos) ? cloudData.undatedTodos.length : -1
           };
           const cloudKnownTotal = Object.values(cloudCounts).filter(n => n >= 0).reduce((s, n) => s + n, 0);
           if (cloudKnownTotal === 0 && localTotal > 0) {
@@ -15508,6 +15517,13 @@ ${checkinLine}
           if (Array.isArray(cloudData.externalEvents)) {
             if (cloudData.externalEvents.length === 0 && localCounts.externalEvents > 0) protectedTables.push('externalEvents');
             else { await db.externalEvents.clear(); if (cloudData.externalEvents.length > 0) await db.externalEvents.bulkAdd(cloudData.externalEvents); }
+          }
+          if (Array.isArray(cloudData.undatedTodos)) {
+            if (cloudData.undatedTodos.length === 0 && localCounts.undatedTodos > 0) protectedTables.push('undatedTodos');
+            else {
+              state.undatedTodos = cloudData.undatedTodos;
+              localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos));
+            }
           }
 
           if (protectedTables.length > 0) {
