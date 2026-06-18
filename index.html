@@ -4743,7 +4743,10 @@
         state.gcalToken = token || null;
         state.gcalConnected = !!token;
 
-        if (token) state.settings.gcalToken = token;
+        if (token) {
+          state.settings.gcalToken = token;
+          state.settings.gcalLinked = true;
+        }
         else delete state.settings.gcalToken;
 
         try {
@@ -4763,6 +4766,10 @@
 
         if (token) persistGcalToken(token);
         return token;
+      }
+
+      function isGoogleCalendarLinked() {
+        return !!(state.gcalConnected || state.gcalToken || state.settings?.gcalLinked || state.settings?.gcalLastSyncedAt);
       }
 
       function getCloudSafeSettings() {
@@ -4872,12 +4879,11 @@
             } else if (restoreGcalToken()) {
               state.gcalConnected = true;
             }
-            syncFromCloud({ silent: true });
+            await syncFromCloud({ silent: true });
             startCloudAutoPull();
-            scheduleAutoFetchGoogleCalendar(900);
           }
 
-          supa.auth.onAuthStateChange((event, session) => {
+          supa.auth.onAuthStateChange(async (event, session) => {
             currentUser = session?.user || null;
             if (session?.provider_token) {
               persistGcalToken(session.provider_token);
@@ -4885,9 +4891,11 @@
               state.gcalConnected = true;
             }
             if (currentUser) {
-              syncFromCloud({ silent: true });
+              await syncFromCloud({ silent: true });
               startCloudAutoPull();
-              scheduleAutoFetchGoogleCalendar(900);
+              if (event !== 'INITIAL_SESSION') {
+                scheduleAutoFetchGoogleCalendar(900, { recoverToken: true });
+              }
             } else {
               stopCloudAutoPull();
             }
@@ -4967,7 +4975,12 @@
         const { error } = await supa.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: window.location.origin + window.location.pathname
+            redirectTo: window.location.origin + window.location.pathname,
+            scopes: `openid email profile ${GCAL_SCOPES}`,
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent'
+            }
           }
         });
         if (error) toast('Google 로그인 실패: ' + error.message, 'error');
@@ -5187,7 +5200,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.06.18-01';
+      const APP_VERSION = 'v2026.06.19-01';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -12858,6 +12871,7 @@
       let gisInited = false;
       let tokenClient = null;
       let gcalFetchInFlight = false;
+      let gcalTokenRequestInFlight = null;
 
       // Internal Google Calendar config — managed by app owner
       const GCAL_CONFIG = {
@@ -12878,16 +12892,34 @@
         '11': '#D50000'   // Tomato
       };
 
-      async function initGoogleCalendar() {
+      function waitForGoogleApiReady(checkFn, label, timeoutMs = 6000) {
+        if (checkFn()) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          const startedAt = Date.now();
+          const timer = setInterval(() => {
+            if (checkFn()) {
+              clearInterval(timer);
+              resolve();
+              return;
+            }
+            if (Date.now() - startedAt > timeoutMs) {
+              clearInterval(timer);
+              reject(new Error(`${label} 로드가 지연되고 있습니다`));
+            }
+          }, 80);
+        });
+      }
+
+      async function ensureGoogleCalendarRuntime() {
         const clientId = GCAL_CONFIG.clientId;
         const apiKey = GCAL_CONFIG.apiKey;
 
         if (!clientId) {
           toast('Google Calendar 연동이 아직 준비되지 않았습니다. 관리자에게 문의하세요.', 'warning');
-          return;
+          return false;
         }
 
-        // Load GAPI
+        await waitForGoogleApiReady(() => !!(window.gapi && gapi.load), 'Google API');
         if (!gapiInited) {
           await new Promise((resolve) => {
             gapi.load('client', resolve);
@@ -12900,30 +12932,67 @@
           gapiInited = true;
         }
 
-        // Init GIS token client
+        await waitForGoogleApiReady(() => !!(window.google && google.accounts && google.accounts.oauth2), 'Google 로그인');
         if (!gisInited && window.google && google.accounts) {
           tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: clientId,
             scope: GCAL_SCOPES,
-            callback: (response) => {
-              if (response.error) {
-                toast('Google 인증 실패', 'error');
-                return;
-              }
-              persistGcalToken(response.access_token);
-              state.gcalConnected = true;
-              toast('✅ Google Calendar 연결됨', 'success');
-              fetchGoogleEvents();
-              // Re-render settings to update status
-              if (state.currentPage === 'settings') renderSettings();
-            },
+            callback: () => { },
           });
           gisInited = true;
         }
 
-        if (tokenClient) {
-          tokenClient.requestAccessToken();
+        return !!tokenClient;
+      }
+
+      async function requestGoogleCalendarAccessToken(options = {}) {
+        const interactive = !!options.interactive;
+        if (gcalTokenRequestInFlight) return gcalTokenRequestInFlight;
+
+        gcalTokenRequestInFlight = (async () => {
+          const ready = await ensureGoogleCalendarRuntime();
+          if (!ready || !tokenClient) return null;
+
+          return await new Promise((resolve, reject) => {
+            tokenClient.callback = (response) => {
+              if (response?.error) {
+                if (interactive) toast('Google 인증 실패', 'error');
+                resolve(null);
+                return;
+              }
+              const token = response?.access_token || '';
+              if (token) {
+                persistGcalToken(token);
+                state.gcalConnected = true;
+                if (state.currentPage === 'settings') renderSettings();
+                resolve(token);
+              } else {
+                resolve(null);
+              }
+            };
+            try {
+              tokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+            } catch (e) {
+              if (interactive) reject(e);
+              else resolve(null);
+            }
+          });
+        })();
+
+        try {
+          return await gcalTokenRequestInFlight;
+        } finally {
+          gcalTokenRequestInFlight = null;
         }
+      }
+
+      async function initGoogleCalendar(options = {}) {
+        const interactive = options.interactive !== false;
+        const token = await requestGoogleCalendarAccessToken({ interactive });
+        if (!token) return false;
+        if (interactive) toast('✅ Google Calendar 연결됨', 'success');
+        fetchGoogleEvents({ silent: !interactive });
+        return true;
       }
 
       async function fetchGoogleEvents(options = {}) {
@@ -12932,13 +13001,19 @@
 
         const interactive = !!options.interactive;
         const silent = !!options.silent;
-        const gcalToken = restoreGcalToken();
+        let gcalToken = restoreGcalToken();
+
+        if (!gcalToken) {
+          if (currentUser && (options.recoverToken || isGoogleCalendarLinked())) {
+            gcalToken = await requestGoogleCalendarAccessToken({ interactive: false });
+          }
+        }
 
         if (!gcalToken) {
           gcalFetchInFlight = false;
           if (interactive) {
             toast('구글 캘린더 권한을 요청합니다...', 'info');
-            await initGoogleCalendar();
+            await initGoogleCalendar({ interactive: true });
           }
           return;
         }
@@ -12994,9 +13069,15 @@
                   persistGcalToken(null);
                   state.gcalConnected = false;
                   if (state.currentPage === 'settings') renderSettings();
+                  const recoveredToken = currentUser ? await requestGoogleCalendarAccessToken({ interactive: false }) : null;
+                  if (recoveredToken) {
+                    gcalFetchInFlight = false;
+                    await fetchGoogleEvents({ ...options, recoverToken: false });
+                    return;
+                  }
                   if (interactive) {
                     toast('구글 권한을 다시 요청합니다...', 'warning');
-                    await initGoogleCalendar();
+                    await initGoogleCalendar({ interactive: true });
                     return;
                   }
                 }
@@ -13120,20 +13201,21 @@
           return;
         }
         toast('구글 캘린더 권한을 다시 요청합니다...', 'info');
-        await initGoogleCalendar();
+        await initGoogleCalendar({ interactive: true });
       }
 
-      function scheduleAutoFetchGoogleCalendar(delay = 700) {
+      function scheduleAutoFetchGoogleCalendar(delay = 700, options = {}) {
         const token = restoreGcalToken();
-        if (!token) return false;
-        state.gcalConnected = true;
+        const recoverToken = options.recoverToken !== false;
+        if (!token && !(currentUser && recoverToken && isGoogleCalendarLinked())) return false;
+        if (token) state.gcalConnected = true;
         if (gcalAutoFetchTimer) clearTimeout(gcalAutoFetchTimer);
         gcalAutoFetchTimer = setTimeout(() => {
           gcalAutoFetchTimer = null;
           const nowTs = Date.now();
           if (nowTs - gcalLastAutoFetchAt < 10000) return;
           gcalLastAutoFetchAt = nowTs;
-          fetchGoogleEvents({ silent: true });
+          fetchGoogleEvents({ silent: true, recoverToken });
         }, delay);
         return true;
       }
@@ -13147,9 +13229,8 @@
         window._goalivoGcalAutoBound = true;
 
         const tryRefresh = () => {
-          // Linked users only: refresh immediately when app becomes active.
-          if (!restoreGcalToken()) return;
-          scheduleAutoFetchGoogleCalendar(0);
+          if (!currentUser && !restoreGcalToken()) return;
+          scheduleAutoFetchGoogleCalendar(0, { recoverToken: true });
         };
 
         document.addEventListener('visibilitychange', () => {
@@ -13653,16 +13734,20 @@
     </div>`;
 
         // Google Calendar 설정
+        const gcalLinked = isGoogleCalendarLinked();
+        const lastGcalSync = state.settings.gcalLastSyncedAt
+          ? new Date(state.settings.gcalLastSyncedAt).toLocaleString('ko-KR')
+          : '';
         html += `<div class="settings-section">
       <div class="settings-section-title">외부 일정 연동 (Google Sync Only)</div>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
         <div style="flex:1;">
-          <div style="font-size:var(--fs-sm);font-weight:600;margin-bottom:4px;">${state.gcalConnected ? '✅ Google Calendar 연결됨' : 'Google Calendar를 연결하세요'}</div>
-          <div style="font-size:var(--fs-xs);color:var(--c-text-muted);">Google 일정은 읽기 전용 오버레이로만 가져옵니다</div>
+          <div style="font-size:var(--fs-sm);font-weight:600;margin-bottom:4px;">${gcalLinked ? '✅ Google Calendar 연결됨' : 'Google Calendar를 연결하세요'}</div>
+          <div style="font-size:var(--fs-xs);color:var(--c-text-muted);">Google 일정은 읽기 전용 오버레이로만 가져옵니다${lastGcalSync ? `<br>마지막 자동 새로고침: ${U.esc(lastGcalSync)}` : ''}</div>
         </div>
-        <button class="btn ${state.gcalConnected ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="Goalivo.connectGoogle()" style="white-space:nowrap;display:flex;align-items:center;gap:6px;">
+        <button class="btn ${gcalLinked ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="Goalivo.connectGoogle()" style="white-space:nowrap;display:flex;align-items:center;gap:6px;">
           <svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0;"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          ${state.gcalConnected ? '재동기화' : 'Google 계정으로 연결'}
+          ${gcalLinked ? '재동기화' : 'Google 계정으로 연결'}
         </button>
       </div>
       <div style="font-size:var(--fs-xs);color:var(--c-text-muted);">
@@ -13879,6 +13964,7 @@
         if (!state.settings.skin) state.settings.skin = 'aurora';
         document.documentElement.setAttribute('data-skin', state.settings.skin);
         restoreGcalToken();
+        if (isGoogleCalendarLinked()) state.gcalConnected = true;
       }
 
       function connectGoogle() { syncGoogleCalendar(); }
