@@ -4720,6 +4720,7 @@
       let isSyncingFromCloud = false;
       let pendingFeedbackImages = [];
       let visionAiRequestSeq = 0;
+      let taskSortSequence = 0;
 
       function applyWeekStartDefault() {
         if (!state.settings) state.settings = {};
@@ -4736,6 +4737,86 @@
         const n = Number(value);
         if (!Number.isFinite(n)) return 1;
         return Math.max(0.6, Math.min(2.6, Math.round(n * 100) / 100));
+      }
+
+      function allocateTaskSortOrder() {
+        taskSortSequence += 1;
+        return (Date.now() * 1000) + taskSortSequence;
+      }
+
+      function normalizeTaskPriority(priority) {
+        const n = Number(priority);
+        return [1, 2, 3].includes(n) ? n : null;
+      }
+
+      function getTaskPriorityLabel(priority) {
+        const normalized = normalizeTaskPriority(priority);
+        return normalized ? `${normalized}순위` : '우선순위 없음';
+      }
+
+      function getTaskPriorityTone(priority) {
+        const normalized = normalizeTaskPriority(priority);
+        if (normalized === 1) return { bg: 'rgba(234, 88, 12, 0.12)', fg: '#c2410c' };
+        if (normalized === 2) return { bg: 'rgba(14, 116, 144, 0.12)', fg: '#0f766e' };
+        if (normalized === 3) return { bg: 'rgba(79, 70, 229, 0.12)', fg: '#4338ca' };
+        return { bg: 'var(--c-surface-alt)', fg: 'var(--c-text-muted)' };
+      }
+
+      function getTaskSortOrderValue(item) {
+        const manual = Number(item?.manualSortOrder);
+        if (Number.isFinite(manual) && manual > 0) return manual;
+        const createdAt = item?.createdAt ? Date.parse(item.createdAt) : NaN;
+        if (Number.isFinite(createdAt) && createdAt > 0) return createdAt * 1000;
+        const id = Number(item?.id);
+        return Number.isFinite(id) ? id : 0;
+      }
+
+      function compareTaskListOrder(a, b) {
+        return getTaskSortOrderValue(b) - getTaskSortOrderValue(a);
+      }
+
+      function normalizeUndatedTodoItem(todo) {
+        if (!todo || typeof todo !== 'object') return null;
+        const id = Number(todo.id);
+        if (!Number.isFinite(id)) return null;
+        return {
+          ...todo,
+          id,
+          title: String(todo.title || '').trim(),
+          done: !!todo.done,
+          priority: normalizeTaskPriority(todo.priority),
+          manualSortOrder: getTaskSortOrderValue(todo),
+          createdAt: todo.createdAt || new Date().toISOString()
+        };
+      }
+
+      function decorateTaskListEntry(entry, kind) {
+        return {
+          ...entry,
+          taskListKind: kind,
+          priority: normalizeTaskPriority(entry.priority),
+          manualSortOrder: getTaskSortOrderValue(entry)
+        };
+      }
+
+      function getSortedUndatedTodos(done) {
+        return (state.undatedTodos || [])
+          .map(normalizeUndatedTodoItem)
+          .filter(todo => todo && !!todo.done === !!done)
+          .sort(compareTaskListOrder);
+      }
+
+      function renderTaskPriorityBadge(priority) {
+        const tone = getTaskPriorityTone(priority);
+        return `<span class="badge" style="background:${tone.bg};color:${tone.fg};">${getTaskPriorityLabel(priority)}</span>`;
+      }
+
+      function renderTaskPriorityButtons(kind, id, priority) {
+        const normalized = normalizeTaskPriority(priority);
+        return [1, 2, 3].map(level => {
+          const active = normalized === level;
+          return `<button class="btn btn-xs ${active ? 'btn-primary' : 'btn-secondary'}" type="button" style="min-width:32px;padding:2px 6px;" onclick="event.stopPropagation();Goalivo.setTaskListPriority('${kind}', ${id}, ${level})">${level}</button>`;
+        }).join('');
       }
 
       function persistGcalToken(token) {
@@ -5200,7 +5281,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.06.19-01';
+      const APP_VERSION = 'v2026.06.19-02';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -7470,6 +7551,8 @@
             plannedMinutes: goal.weeklyHours ? Math.round((goal.weeklyHours / 7) * 60) : 60,
             actualMinutes: 0,
             status: 'pending',
+            priority: null,
+            manualSortOrder: allocateTaskSortOrder(),
             createdAt: new Date().toISOString()
           });
         }
@@ -7546,8 +7629,8 @@
         const todayTasks = state.taskInstances.filter(t => t.date === selectedDate);
         const todayBlocks = state.timeBlocks.filter(b => !b.isTodo && b.date === selectedDate);
 
-        const coreTasks = todayTasks.filter(t => !t.linkedBlockId);
-        const todoTasks = todayTasks.filter(t => !!t.linkedBlockId);
+        const coreTasks = todayTasks.filter(t => !t.linkedBlockId).sort(compareTaskListOrder);
+        const todoTasks = todayTasks.filter(t => !!t.linkedBlockId).sort(compareTaskListOrder);
         const mergedCount = coreTasks.length + todoTasks.length + todayBlocks.length;
         document.getElementById('todayCount').textContent = mergedCount;
         const todoOnlyBtn = document.getElementById('btnTodayTodoOnly');
@@ -7581,6 +7664,7 @@
             <div class="task-item-text ${done ? 'done' : ''}">${U.esc(task.title)}</div>
             <div class="task-item-meta">
               ${goal ? `<span style="color:${goal.color};">●</span> ${U.esc(goal.name)}` : ''}
+              ${task.priority ? ` · ${getTaskPriorityLabel(task.priority)}` : ''}
               ${task.plannedMinutes ? ` · ${Math.round(task.plannedMinutes)}분` : ''}
             </div>
           </div>
@@ -7598,6 +7682,7 @@
             <div class="task-item-text ${done ? 'done' : ''}">☑ ${U.esc(task.title)}</div>
             <div class="task-item-meta">
               ${goal ? `<span style="color:${goal.color};">●</span> ${U.esc(goal.name)}` : '일반 할 일'}
+              ${task.priority ? ` · ${getTaskPriorityLabel(task.priority)}` : ''}
               ${task.plannedMinutes ? ` · ${Math.round(task.plannedMinutes)}분` : ''}
             </div>
           </div>
@@ -7712,6 +7797,11 @@
         localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos || []));
       }
 
+      function setUndatedTodos(nextTodos) {
+        state.undatedTodos = (nextTodos || []).map(normalizeUndatedTodoItem).filter(Boolean);
+        persistUndatedTodos();
+      }
+
       async function addUndatedTodo() {
         const input = document.getElementById('undatedTodoInput');
         if (!input) return;
@@ -7723,14 +7813,14 @@
           return;
         }
         if (noDate) {
-          state.undatedTodos = state.undatedTodos || [];
-          state.undatedTodos.unshift({
+          setUndatedTodos([{
             id: Date.now(),
             title,
             done: false,
+            priority: null,
+            manualSortOrder: allocateTaskSortOrder(),
             createdAt: new Date().toISOString()
-          });
-          persistUndatedTodos();
+          }, ...(state.undatedTodos || [])]);
         } else {
           if (!date) {
             toast('날짜를 선택하거나 날짜 지정 안 함을 켜세요', 'error');
@@ -7744,6 +7834,8 @@
             status: 'pending',
             plannedMinutes: 0,
             linkedBlockId: null,
+            priority: null,
+            manualSortOrder: allocateTaskSortOrder(),
             createdAt: new Date().toISOString()
           });
           await loadGoals();
@@ -7759,14 +7851,78 @@
         const todo = (state.undatedTodos || []).find(t => t.id === todoId);
         if (!todo) return;
         todo.done = !todo.done;
-        persistUndatedTodos();
+        setUndatedTodos(state.undatedTodos || []);
         renderTaskListModal();
       }
 
       function deleteUndatedTodo(todoId) {
-        state.undatedTodos = (state.undatedTodos || []).filter(t => t.id !== todoId);
-        persistUndatedTodos();
+        setUndatedTodos((state.undatedTodos || []).filter(t => t.id !== todoId));
         renderTaskListModal();
+      }
+
+      async function setTaskListPriority(kind, id, priority) {
+        const nextPriority = normalizeTaskPriority(priority);
+        if (kind === 'undated') {
+          const todo = (state.undatedTodos || []).find(t => t.id === Number(id));
+          if (!todo) return;
+          todo.priority = nextPriority;
+          setUndatedTodos(state.undatedTodos || []);
+          renderTaskListModal();
+          toast(`${getTaskPriorityLabel(nextPriority)}로 설정되었습니다`, 'success');
+          return;
+        }
+        const task = state.taskInstances.find(t => t.id === Number(id));
+        if (!task) return;
+        task.priority = nextPriority;
+        await db.taskInstances.update(task.id, { priority: nextPriority });
+        renderTaskListModal();
+        renderAll();
+        toast(`${getTaskPriorityLabel(nextPriority)}로 설정되었습니다`, 'success');
+      }
+
+      async function moveTaskListItem(kind, id, direction, dateKey = '', done = false) {
+        const step = Number(direction);
+        if (![-1, 1].includes(step)) return;
+
+        if (kind === 'undated') {
+          const sectionItems = getSortedUndatedTodos(done);
+          const index = sectionItems.findIndex(todo => todo.id === Number(id));
+          const swapIndex = index + step;
+          if (index < 0 || swapIndex < 0 || swapIndex >= sectionItems.length) return;
+          const current = sectionItems[index];
+          const target = sectionItems[swapIndex];
+          const currentOrder = getTaskSortOrderValue(current);
+          const targetOrder = getTaskSortOrderValue(target);
+          const currentState = (state.undatedTodos || []).find(todo => todo.id === current.id);
+          const targetState = (state.undatedTodos || []).find(todo => todo.id === target.id);
+          if (!currentState || !targetState) return;
+          currentState.manualSortOrder = targetOrder;
+          targetState.manualSortOrder = currentOrder;
+          setUndatedTodos(state.undatedTodos || []);
+          renderTaskListModal();
+          return;
+        }
+
+        const sectionItems = state.taskInstances
+          .filter(task => task.date === dateKey && (task.status === 'completed') === !!done)
+          .map(task => decorateTaskListEntry(task, 'dated'))
+          .sort(compareTaskListOrder);
+        const index = sectionItems.findIndex(task => task.id === Number(id));
+        const swapIndex = index + step;
+        if (index < 0 || swapIndex < 0 || swapIndex >= sectionItems.length) return;
+        const current = sectionItems[index];
+        const target = sectionItems[swapIndex];
+        const currentOrder = getTaskSortOrderValue(current);
+        current.manualSortOrder = getTaskSortOrderValue(target);
+        target.manualSortOrder = currentOrder;
+        await db.taskInstances.update(current.id, { manualSortOrder: current.manualSortOrder });
+        await db.taskInstances.update(target.id, { manualSortOrder: target.manualSortOrder });
+        const currentState = state.taskInstances.find(task => task.id === current.id);
+        const targetState = state.taskInstances.find(task => task.id === target.id);
+        if (currentState) currentState.manualSortOrder = current.manualSortOrder;
+        if (targetState) targetState.manualSortOrder = target.manualSortOrder;
+        renderTaskListModal();
+        renderAll();
       }
 
       function toggleCompletedTaskList() {
@@ -7806,23 +7962,27 @@
           const done = task.status === 'completed';
           if (!showCompleted && done) return;
           const goal = task.goalId ? state.goals.find(g => g.id === task.goalId) : null;
-          datedItems.push({
+          datedItems.push(decorateTaskListEntry({
+            id: task.id,
             date: task.date,
             title: task.title || '(제목 없음)',
             done,
+            priority: task.priority,
+            manualSortOrder: task.manualSortOrder,
             isMilestoneTask: isMilestoneLikeTask(task),
             meta: `${goal ? goal.name : '미분류'}${task.plannedMinutes ? ` · ${Math.round(task.plannedMinutes)}분` : ''}`,
             click: `Goalivo.openTaskDetail(${task.id}, 'taskList')`
-          });
+          }, 'dated'));
         });
 
         datedItems.sort((a, b) => {
           if (a.done !== b.done) return a.done ? 1 : -1;
-          return a.date.localeCompare(b.date);
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return compareTaskListOrder(a, b);
         });
 
-        const incompleteUndated = (state.undatedTodos || []).filter(todo => !todo.done);
-        const completeUndated = showCompleted ? (state.undatedTodos || []).filter(todo => !!todo.done) : [];
+        const incompleteUndated = getSortedUndatedTodos(false);
+        const completeUndated = showCompleted ? getSortedUndatedTodos(true) : [];
         let html = `
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <div style="font-size:var(--fs-sm);font-weight:700;">미완료 할일</div>
@@ -7835,14 +7995,22 @@
 
         if (incompleteUndated.length > 0) {
           html += `<div style="font-size:var(--fs-sm);font-weight:700;margin:8px 0 6px;">날짜 미정</div>`;
-          html += incompleteUndated.map(todo => `
+          html += incompleteUndated.map((todo, idx) => `
             <div class="task-item" style="margin-bottom:6px;">
               <div class="checkbox" onclick="event.stopPropagation();Goalivo.toggleUndatedTodo(${todo.id})"></div>
               <div style="flex:1;min-width:0;">
                 <div class="task-item-text">${U.esc(todo.title)}</div>
-                <div class="task-item-meta">날짜 미정</div>
+                <div class="task-item-meta">날짜 미정 · ${getTaskPriorityLabel(todo.priority)}</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${renderTaskPriorityButtons('undated', todo.id, todo.priority)}</div>
               </div>
-              <button class="btn btn-xs btn-danger" onclick="event.stopPropagation();Goalivo.deleteUndatedTodo(${todo.id})">삭제</button>
+              <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+                <div style="display:flex;gap:4px;">${renderTaskPriorityBadge(todo.priority)}</div>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn btn-xs btn-secondary" type="button" ${idx === 0 ? 'disabled style="opacity:0.45;pointer-events:none;"' : ''} onclick="event.stopPropagation();Goalivo.moveTaskListItem('undated', ${todo.id}, -1, '', false)">↑</button>
+                  <button class="btn btn-xs btn-secondary" type="button" ${idx === incompleteUndated.length - 1 ? 'disabled style="opacity:0.45;pointer-events:none;"' : ''} onclick="event.stopPropagation();Goalivo.moveTaskListItem('undated', ${todo.id}, 1, '', false)">↓</button>
+                </div>
+                <button class="btn btn-xs btn-danger" onclick="event.stopPropagation();Goalivo.deleteUndatedTodo(${todo.id})">삭제</button>
+              </div>
             </div>
           `).join('');
         }
@@ -7859,7 +8027,15 @@
               <div class="checkbox ${item.done ? 'checked' : ''}"></div>
               <div style="flex:1;min-width:0;">
                 <div class="task-item-text ${item.done ? 'done' : ''}">${U.esc(item.title)}</div>
-                <div class="task-item-meta">${U.esc(item.meta)}</div>
+                <div class="task-item-meta">${U.esc(item.meta)} · ${getTaskPriorityLabel(item.priority)}</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${renderTaskPriorityButtons('dated', item.id, item.priority)}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+                <div>${renderTaskPriorityBadge(item.priority)}</div>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn btn-xs btn-secondary" type="button" onclick="event.stopPropagation();Goalivo.moveTaskListItem('dated', ${item.id}, -1, '${item.date}', false)">↑</button>
+                  <button class="btn btn-xs btn-secondary" type="button" onclick="event.stopPropagation();Goalivo.moveTaskListItem('dated', ${item.id}, 1, '${item.date}', false)">↓</button>
+                </div>
               </div>
             </div>
           `;
@@ -7877,14 +8053,22 @@
           } else {
             if (completeUndated.length > 0) {
               html += `<div style="font-size:var(--fs-sm);font-weight:700;margin:8px 0 6px;">날짜 미정</div>`;
-              html += completeUndated.map(todo => `
+              html += completeUndated.map((todo, idx) => `
                 <div class="task-item" style="margin-bottom:6px;">
                   <div class="checkbox checked" onclick="event.stopPropagation();Goalivo.toggleUndatedTodo(${todo.id})"></div>
                   <div style="flex:1;min-width:0;">
                     <div class="task-item-text done">${U.esc(todo.title)}</div>
-                    <div class="task-item-meta">날짜 미정</div>
+                    <div class="task-item-meta">날짜 미정 · ${getTaskPriorityLabel(todo.priority)}</div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${renderTaskPriorityButtons('undated', todo.id, todo.priority)}</div>
                   </div>
-                  <button class="btn btn-xs btn-danger" onclick="event.stopPropagation();Goalivo.deleteUndatedTodo(${todo.id})">삭제</button>
+                  <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+                    <div>${renderTaskPriorityBadge(todo.priority)}</div>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn btn-xs btn-secondary" type="button" ${idx === 0 ? 'disabled style="opacity:0.45;pointer-events:none;"' : ''} onclick="event.stopPropagation();Goalivo.moveTaskListItem('undated', ${todo.id}, -1, '', true)">↑</button>
+                      <button class="btn btn-xs btn-secondary" type="button" ${idx === completeUndated.length - 1 ? 'disabled style="opacity:0.45;pointer-events:none;"' : ''} onclick="event.stopPropagation();Goalivo.moveTaskListItem('undated', ${todo.id}, 1, '', true)">↓</button>
+                    </div>
+                    <button class="btn btn-xs btn-danger" onclick="event.stopPropagation();Goalivo.deleteUndatedTodo(${todo.id})">삭제</button>
+                  </div>
                 </div>
               `).join('');
             }
@@ -7900,7 +8084,15 @@
                   <div class="checkbox checked"></div>
                   <div style="flex:1;min-width:0;">
                     <div class="task-item-text done">${U.esc(item.title)}</div>
-                    <div class="task-item-meta">${U.esc(item.meta)}</div>
+                    <div class="task-item-meta">${U.esc(item.meta)} · ${getTaskPriorityLabel(item.priority)}</div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${renderTaskPriorityButtons('dated', item.id, item.priority)}</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+                    <div>${renderTaskPriorityBadge(item.priority)}</div>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn btn-xs btn-secondary" type="button" onclick="event.stopPropagation();Goalivo.moveTaskListItem('dated', ${item.id}, -1, '${item.date}', true)">↑</button>
+                      <button class="btn btn-xs btn-secondary" type="button" onclick="event.stopPropagation();Goalivo.moveTaskListItem('dated', ${item.id}, 1, '${item.date}', true)">↓</button>
+                    </div>
                   </div>
                 </div>
               `;
@@ -8160,6 +8352,7 @@
         const plannedMinutes = task.plannedMinutes || 0;
         const statusLabel = done ? '완료' : '진행 중';
         const statusColor = done ? 'var(--c-completed)' : 'var(--c-in-progress)';
+        const priorityLabel = getTaskPriorityLabel(task.priority);
 
         document.getElementById('rightPanelTitle').textContent = '할 일 상세';
         document.getElementById('rightPanelContent').innerHTML = `
@@ -8171,6 +8364,7 @@
             <div class="detail-chip-row">
               <span class="detail-chip">✅ 할 일</span>
               <span class="detail-chip"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor};"></span> ${statusLabel}</span>
+              <span class="detail-chip">${priorityLabel}</span>
               ${goal ? `<span class="detail-chip"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${goal.color};"></span> ${U.esc(goal.name)}</span>` : `<span class="detail-chip">미분류</span>`}
             </div>
           </div>
@@ -8181,6 +8375,7 @@
         <div class="detail-kv"><div class="k">날짜</div><div class="v">${task.date}</div></div>
         <div class="detail-kv"><div class="k">예상 시간</div><div class="v">${plannedMinutes}분</div></div>
         <div class="detail-kv"><div class="k">상태</div><div class="v">${statusLabel}</div></div>
+        <div class="detail-kv"><div class="k">우선순위</div><div class="v">${priorityLabel}</div></div>
       </div>
       <div class="detail-card">
         <div class="detail-section-title">작업</div>
@@ -10876,6 +11071,8 @@
             goalId,
             memo: document.getElementById('blockMemo').value.trim(),
             categoryColor,
+            priority: null,
+            manualSortOrder: allocateTaskSortOrder(),
             createdAt: new Date().toISOString()
           });
           persistUndatedTodos();
@@ -10943,6 +11140,8 @@
               status: 'pending',
               plannedMinutes: isAllDay ? 0 : (U.timeToMinutes(endTime) - U.timeToMinutes(startTime)),
               linkedBlockId: blockId,
+              priority: null,
+              manualSortOrder: allocateTaskSortOrder(),
               createdAt: new Date().toISOString()
             });
           }
@@ -10963,7 +11162,7 @@
                 await db.taskInstances.add({
                   userId: 1, goalId, title, date: rd, status: 'pending',
                   plannedMinutes: isAllDay ? 0 : (U.timeToMinutes(endTime) - U.timeToMinutes(startTime)),
-                  linkedBlockId: rid, createdAt: new Date().toISOString()
+                  linkedBlockId: rid, priority: null, manualSortOrder: allocateTaskSortOrder(), createdAt: new Date().toISOString()
                 });
               }
             }
@@ -13948,7 +14147,9 @@
         try {
           const savedTodos = localStorage.getItem('goalivo_undated_todos');
           const parsedTodos = savedTodos ? JSON.parse(savedTodos) : [];
-          state.undatedTodos = Array.isArray(parsedTodos) ? parsedTodos : [];
+          state.undatedTodos = Array.isArray(parsedTodos)
+            ? parsedTodos.map(normalizeUndatedTodoItem).filter(Boolean).sort(compareTaskListOrder)
+            : [];
         } catch (_) {
           state.undatedTodos = [];
         }
@@ -16391,6 +16592,8 @@ ${checkinLine}
         addUndatedTodo,
         toggleUndatedTodo,
         deleteUndatedTodo,
+        setTaskListPriority,
+        moveTaskListItem,
         openSearchModal,
         runSearch,
         openTaskDetail,
