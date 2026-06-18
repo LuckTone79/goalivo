@@ -1038,6 +1038,47 @@
       font-size: var(--fs-xs);
     }
 
+    .btn-feedback-press {
+      transform: scale(0.96);
+      box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.12);
+    }
+
+    .btn-feedback-success {
+      animation: btnSuccessPulse 0.46s ease;
+    }
+
+    .dday-item-flash {
+      animation: ddayItemFlash 0.7s ease;
+    }
+
+    @keyframes btnSuccessPulse {
+      0% {
+        transform: scale(1);
+      }
+
+      38% {
+        transform: scale(0.96);
+      }
+
+      72% {
+        transform: scale(1.04);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes ddayItemFlash {
+      0% {
+        background: color-mix(in srgb, var(--c-accent) 18%, var(--c-surface));
+      }
+
+      100% {
+        background: var(--c-surface);
+      }
+    }
+
     /* Form elements */
     .form-group {
       margin-bottom: 12px;
@@ -5146,7 +5187,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.06.03-02';
+      const APP_VERSION = 'v2026.06.18-01';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -5157,6 +5198,9 @@
       let reminderTicker = null;
       let lastReminderStamp = '';
       let reminderTriggerDate = '';
+      let activeDdayEditId = null;
+      let ddayFlashItemId = null;
+      let ddayFlashTimer = null;
       const reminderTriggerSet = new Set();
       let gcalAutoFetchTimer = null;
       let gcalLastAutoFetchAt = 0;
@@ -5199,6 +5243,41 @@
 
       function ensureDdayItems() {
         state.settings.ddayItems = normalizeDdayItems(state.settings.ddayItems || []);
+      }
+
+      function getDdayItemById(id) {
+        ensureDdayItems();
+        return (state.settings.ddayItems || []).find(item => item.id === Number(id)) || null;
+      }
+
+      function animateButtonFeedback(button, type = 'success') {
+        if (!button) return;
+        button.classList.remove('btn-feedback-press', 'btn-feedback-success');
+        void button.offsetWidth;
+        button.classList.add('btn-feedback-press');
+        setTimeout(() => {
+          button.classList.remove('btn-feedback-press');
+          if (type === 'success') {
+            button.classList.add('btn-feedback-success');
+            setTimeout(() => button.classList.remove('btn-feedback-success'), 460);
+          }
+        }, 110);
+      }
+
+      function flashDdayItem(id) {
+        ddayFlashItemId = Number(id) || null;
+        if (ddayFlashTimer) clearTimeout(ddayFlashTimer);
+        ddayFlashTimer = setTimeout(() => {
+          ddayFlashItemId = null;
+          ddayFlashTimer = null;
+          renderDdayModal();
+        }, 700);
+      }
+
+      function refreshDdayUi(options = {}) {
+        renderDdayModal();
+        renderAll();
+        if (options.flashId) flashDdayItem(options.flashId);
       }
 
       function getDdayLabel(dateStr) {
@@ -7941,29 +8020,37 @@
         ensureDdayItems();
         const items = [...(state.settings.ddayItems || [])].sort((a, b) => a.date.localeCompare(b.date));
         const todayStr = U.formatDate(U.today());
+        const editingItem = activeDdayEditId ? getDdayItemById(activeDdayEditId) : null;
+        const actionLabel = editingItem ? '수정 저장' : '추가';
 
         body.innerHTML = `
           <div style="display:grid;grid-template-columns:1fr 130px auto;gap:8px;align-items:end;margin-bottom:12px;">
             <div>
               <label class="form-label">제목</label>
-              <input id="ddayTitle" class="form-input" placeholder="예: 프로젝트 출시" />
+              <input id="ddayTitle" class="form-input" placeholder="예: 프로젝트 출시" value="${U.esc(editingItem?.title || '')}" />
             </div>
             <div>
               <label class="form-label">날짜</label>
-              <input id="ddayDate" class="form-input" type="date" value="${todayStr}" />
+              <input id="ddayDate" class="form-input" type="date" value="${editingItem?.date || todayStr}" />
             </div>
-            <button class="btn btn-primary" onclick="Goalivo.addDdayItem()">추가</button>
+            <div style="display:flex;gap:6px;align-items:flex-end;">
+              <button class="btn btn-primary" type="button" onclick="Goalivo.saveDdayItem(this)">${actionLabel}</button>
+              ${editingItem ? '<button class="btn btn-secondary" type="button" onclick="Goalivo.cancelDdayEdit(this)">취소</button>' : ''}
+            </div>
           </div>
           ${items.length === 0
             ? '<div style="font-size:var(--fs-sm);color:var(--c-text-muted);">등록된 D-day가 없습니다.</div>'
             : items.map(item => `
-              <div class="task-item" style="margin-bottom:8px;">
+              <div class="task-item ${ddayFlashItemId === item.id ? 'dday-item-flash' : ''}" style="margin-bottom:8px;">
                 <div style="width:10px;height:10px;border-radius:50%;background:${item.color || '#8A92D8'};flex-shrink:0;"></div>
                 <div style="flex:1;min-width:0;">
                   <div class="task-item-text">${U.esc(item.title)}</div>
                   <div class="task-item-meta">${item.date} · ${getDdayLabel(item.date)}</div>
                 </div>
-                <button class="btn btn-xs btn-danger" onclick="Goalivo.deleteDdayItem(${item.id})">삭제</button>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <button class="btn btn-xs btn-secondary" type="button" onclick="Goalivo.startDdayEdit(${item.id}, this)">수정</button>
+                  <button class="btn btn-xs btn-danger" type="button" onclick="Goalivo.deleteDdayItem(${item.id}, this)">삭제</button>
+                </div>
               </div>
             `).join('')}
         `;
@@ -7974,7 +8061,7 @@
         openModal('ddayModal');
       }
 
-      function addDdayItem() {
+      function saveDdayItem(button) {
         ensureDdayItems();
         const titleInput = document.getElementById('ddayTitle');
         const dateInput = document.getElementById('ddayDate');
@@ -7982,26 +8069,67 @@
         const date = String(dateInput?.value || '').slice(0, 10);
         if (!title) { toast('D-day 제목을 입력하세요', 'error'); return; }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('D-day 날짜를 선택하세요', 'error'); return; }
-        state.settings.ddayItems.unshift({
-          id: Date.now(),
-          title,
-          date,
-          color: '#8A92D8',
-          memo: '',
-          createdAt: new Date().toISOString()
-        });
+        const wasEditing = Boolean(activeDdayEditId);
+        let targetId = activeDdayEditId;
+        if (wasEditing) {
+          const target = getDdayItemById(activeDdayEditId);
+          if (!target) {
+            activeDdayEditId = null;
+            toast('수정할 D-day를 찾지 못했습니다', 'error');
+            renderDdayModal();
+            return;
+          }
+          target.title = title;
+          target.date = date;
+          targetId = target.id;
+        } else {
+          const newItem = {
+            id: Date.now(),
+            title,
+            date,
+            color: '#8A92D8',
+            memo: '',
+            createdAt: new Date().toISOString()
+          };
+          state.settings.ddayItems.unshift(newItem);
+          targetId = newItem.id;
+        }
         persistSettingsAndSync();
-        renderDdayModal();
-        renderAll();
-        toast('D-day가 추가되었습니다', 'success');
+        activeDdayEditId = null;
+        refreshDdayUi({ flashId: targetId });
+        animateButtonFeedback(button, 'success');
+        toast(wasEditing ? 'D-day가 수정되었습니다' : 'D-day가 추가되었습니다', 'success');
       }
 
-      function deleteDdayItem(id) {
+      function startDdayEdit(id, button) {
+        const target = getDdayItemById(id);
+        if (!target) {
+          toast('수정할 D-day를 찾지 못했습니다', 'error');
+          return;
+        }
+        activeDdayEditId = target.id;
+        renderDdayModal();
+        animateButtonFeedback(button, 'success');
+        requestAnimationFrame(() => {
+          const titleInput = document.getElementById('ddayTitle');
+          titleInput?.focus();
+          titleInput?.select?.();
+        });
+      }
+
+      function cancelDdayEdit(button) {
+        activeDdayEditId = null;
+        renderDdayModal();
+        animateButtonFeedback(button, 'success');
+      }
+
+      function deleteDdayItem(id, button) {
         ensureDdayItems();
         state.settings.ddayItems = (state.settings.ddayItems || []).filter(item => item.id !== Number(id));
+        if (activeDdayEditId === Number(id)) activeDdayEditId = null;
         persistSettingsAndSync();
-        renderDdayModal();
-        renderAll();
+        refreshDdayUi();
+        animateButtonFeedback(button, 'success');
         toast('D-day가 삭제되었습니다', 'success');
       }
 
@@ -16170,7 +16298,9 @@ ${checkinLine}
         toggleTodayTodoOnly,
         openTaskListModal,
         openDdayModal,
-        addDdayItem,
+        saveDdayItem,
+        startDdayEdit,
+        cancelDdayEdit,
         deleteDdayItem,
         addUndatedTodo,
         toggleUndatedTodo,
