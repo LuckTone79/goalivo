@@ -8102,12 +8102,14 @@
         requestAnimationFrame(() => input?.focus());
       }
 
-      function renderDdayModal() {
+      function renderDdayModal(editingId = null) {
         const body = document.getElementById('ddayModalBody');
         if (!body) return;
         ensureDdayItems();
         const items = [...(state.settings.ddayItems || [])].sort((a, b) => a.date.localeCompare(b.date));
         const todayStr = U.formatDate(U.today());
+
+        const COLOR_OPTIONS = ['#8A92D8','#ef4444','#f59e0b','#22c55e','#3b82f6','#a855f7','#ec4899','#14b8a6'];
 
         body.innerHTML = `
           <div style="display:grid;grid-template-columns:1fr 130px auto;gap:8px;align-items:end;margin-bottom:12px;">
@@ -8123,16 +8125,47 @@
           </div>
           ${items.length === 0
             ? '<div style="font-size:var(--fs-sm);color:var(--c-text-muted);">등록된 D-day가 없습니다.</div>'
-            : items.map(item => `
-              <div class="task-item" style="margin-bottom:8px;">
-                <div style="width:10px;height:10px;border-radius:50%;background:${item.color || '#8A92D8'};flex-shrink:0;"></div>
-                <div style="flex:1;min-width:0;">
-                  <div class="task-item-text">${U.esc(item.title)}</div>
-                  <div class="task-item-meta">${item.date} · ${getDdayLabel(item.date)}</div>
-                </div>
-                <button class="btn btn-xs btn-danger" onclick="Goalivo.deleteDdayItem(${item.id})">삭제</button>
-              </div>
-            `).join('')}
+            : items.map(item => {
+                const isEditing = editingId === item.id;
+                if (isEditing) {
+                  return `
+                  <div style="border:1px solid var(--c-border);border-radius:var(--radius);padding:10px;margin-bottom:8px;background:var(--c-bg-card);">
+                    <div style="display:grid;grid-template-columns:1fr 130px;gap:8px;margin-bottom:8px;">
+                      <div>
+                        <label class="form-label">제목</label>
+                        <input id="ddayEditTitle_${item.id}" class="form-input" value="${U.esc(item.title)}" />
+                      </div>
+                      <div>
+                        <label class="form-label">날짜</label>
+                        <input id="ddayEditDate_${item.id}" class="form-input" type="date" value="${item.date}" />
+                      </div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                      <label class="form-label">색상</label>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        ${COLOR_OPTIONS.map(c => `
+                          <div onclick="Goalivo.selectDdayColor(${item.id},'${c}')"
+                               style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${(item.color||'#8A92D8')===c?'var(--c-text)':'transparent'};"></div>
+                        `).join('')}
+                      </div>
+                    </div>
+                    <div style="display:flex;gap:6px;justify-content:flex-end;">
+                      <button class="btn btn-sm btn-secondary" onclick="Goalivo.renderDdayModal()">취소</button>
+                      <button class="btn btn-sm btn-danger" onclick="Goalivo.deleteDdayItem(${item.id})">삭제</button>
+                      <button class="btn btn-sm btn-primary" onclick="Goalivo.saveDdayItem(${item.id})">저장</button>
+                    </div>
+                  </div>`;
+                }
+                return `
+                <div class="task-item" style="margin-bottom:8px;cursor:pointer;" onclick="Goalivo.editDdayItem(${item.id})">
+                  <div style="width:10px;height:10px;border-radius:50%;background:${item.color || '#8A92D8'};flex-shrink:0;margin-top:3px;"></div>
+                  <div style="flex:1;min-width:0;">
+                    <div class="task-item-text">${U.esc(item.title)}</div>
+                    <div class="task-item-meta">${item.date} · ${getDdayLabel(item.date)}</div>
+                  </div>
+                  <span style="font-size:var(--fs-xs);color:var(--c-text-muted);padding:0 4px;">✏️</span>
+                </div>`;
+              }).join('')}
         `;
       }
 
@@ -8170,6 +8203,36 @@
         renderDdayModal();
         renderAll();
         toast('D-day가 삭제되었습니다', 'success');
+      }
+
+      function editDdayItem(id) {
+        renderDdayModal(Number(id));
+      }
+
+      function selectDdayColor(id, color) {
+        ensureDdayItems();
+        const item = (state.settings.ddayItems || []).find(i => i.id === Number(id));
+        if (!item) return;
+        item.color = color;
+        renderDdayModal(Number(id));
+      }
+
+      function saveDdayItem(id) {
+        ensureDdayItems();
+        const item = (state.settings.ddayItems || []).find(i => i.id === Number(id));
+        if (!item) return;
+        const titleEl = document.getElementById(`ddayEditTitle_${id}`);
+        const dateEl = document.getElementById(`ddayEditDate_${id}`);
+        const newTitle = String(titleEl?.value || '').trim();
+        const newDate = String(dateEl?.value || '').slice(0, 10);
+        if (!newTitle) { toast('D-day 제목을 입력하세요', 'error'); return; }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) { toast('날짜를 선택하세요', 'error'); return; }
+        item.title = newTitle;
+        item.date = newDate;
+        persistSettingsAndSync();
+        renderDdayModal();
+        renderAll();
+        toast('D-day가 수정되었습니다', 'success');
       }
 
       /* ============================================================
@@ -16450,6 +16513,10 @@ ${checkinLine}
         openDdayModal,
         addDdayItem,
         deleteDdayItem,
+        editDdayItem,
+        saveDdayItem,
+        selectDdayColor,
+        renderDdayModal,
         addUndatedTodo,
         toggleUndatedTodo,
         deleteUndatedTodo,
