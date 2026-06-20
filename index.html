@@ -4677,6 +4677,9 @@
       let suppressAutoCloudSync = false;
       let isSyncingToCloud = false;
       let isSyncingFromCloud = false;
+      let cloudRealtimeChannel = null;
+      let lastSyncedCloudTs = null;
+      let lastCloudSyncAt = null;
       let pendingFeedbackImages = [];
       let visionAiRequestSeq = 0;
 
@@ -4757,7 +4760,59 @@
           if (!currentUser) return;
           if (state.cloudDirty || isSyncingToCloud || isSyncingFromCloud) return;
           syncFromCloud({ silent: true });
-        }, 45000);
+        }, 20000);
+      }
+
+      // 실시간 동기화: 다른 기기가 클라우드를 갱신하면 즉시 내려받는다.
+      function startCloudRealtime() {
+        if (!supa || !currentUser) return;
+        stopCloudRealtime();
+        try {
+          cloudRealtimeChannel = supa
+            .channel('user_state_realtime_' + currentUser.id)
+            .on('postgres_changes', {
+              event: '*',
+              schema: 'public',
+              table: 'user_state',
+              filter: 'user_id=eq.' + currentUser.id
+            }, (payload) => {
+              const newTs = payload && payload.new && payload.new.updated_at;
+              // 내가 방금 올린 변경(에코)은 무시
+              if (newTs && lastSyncedCloudTs && newTs === lastSyncedCloudTs) return;
+              if (state.cloudDirty || isSyncingToCloud || isSyncingFromCloud) return;
+              syncFromCloud({ silent: true });
+            })
+            .subscribe();
+        } catch (e) {
+          console.warn('[Goalivo] Realtime subscribe failed:', e);
+        }
+      }
+
+      function stopCloudRealtime() {
+        if (cloudRealtimeChannel && supa) {
+          try { supa.removeChannel(cloudRealtimeChannel); } catch (e) { }
+        }
+        cloudRealtimeChannel = null;
+      }
+
+      // 수동 전체 동기화: 로컬 변경을 올린 뒤 최신본을 다시 내려받는다.
+      async function manualCloudSync() {
+        if (!supa || !currentUser) { toast('동기화하려면 로그인하세요', 'error'); return; }
+        if (state.cloudDirty) await syncToCloud({ silent: true });
+        await syncFromCloud({ silent: false });
+        if (state.currentPage === 'settings') renderSettings();
+      }
+
+      function formatRelativeTime(date) {
+        if (!date) return '';
+        const sec = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+        if (sec < 10) return '방금 전';
+        if (sec < 60) return sec + '초 전';
+        const min = Math.round(sec / 60);
+        if (min < 60) return min + '분 전';
+        const hr = Math.round(min / 60);
+        if (hr < 24) return hr + '시간 전';
+        return U.formatDate(date);
       }
 
       function stopCloudAutoPull() {
@@ -4773,6 +4828,12 @@
           if (!currentUser) return;
           if (state.cloudDirty || isSyncingToCloud || isSyncingFromCloud) return;
           syncFromCloud({ silent: true });
+        });
+        window.addEventListener('online', () => {
+          if (!currentUser) return;
+          // 재접속 시: 보류 중인 로컬 변경은 올리고, 아니면 최신본을 받는다.
+          if (state.cloudDirty) scheduleCloudSync(200);
+          else if (!isSyncingToCloud && !isSyncingFromCloud) syncFromCloud({ silent: true });
         });
       }
 
@@ -4831,8 +4892,9 @@
             } else if (restoreGcalToken()) {
               state.gcalConnected = true;
             }
-            syncFromCloud({ silent: true });
+            await syncFromCloud({ silent: true });
             startCloudAutoPull();
+            startCloudRealtime();
             scheduleAutoFetchGoogleCalendar(900);
           }
 
@@ -4846,9 +4908,11 @@
             if (currentUser) {
               syncFromCloud({ silent: true });
               startCloudAutoPull();
+              startCloudRealtime();
               scheduleAutoFetchGoogleCalendar(900);
             } else {
               stopCloudAutoPull();
+              stopCloudRealtime();
             }
             updateAuthUI();
           });
@@ -4937,6 +5001,7 @@
         await supa.auth.signOut();
         currentUser = null;
         stopCloudAutoPull();
+        stopCloudRealtime();
         persistGcalToken(null);
         await db.externalEvents.clear();
         state.externalEvents = [];
@@ -7618,6 +7683,7 @@
 
       function persistUndatedTodos() {
         localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos || []));
+        markCloudDirty();
       }
 
       async function addUndatedTodo() {
@@ -13369,18 +13435,25 @@
         html += `<div class="settings-section">
       <div class="settings-section-title">👤 ${t('settings_account')}</div>`;
         if (currentUser) {
+          const lastSyncText = lastCloudSyncAt ? ('마지막 동기화: ' + formatRelativeTime(lastCloudSyncAt)) : '동기화 대기 중…';
           html += `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--c-surface-alt);border-radius:var(--radius);border:1px solid var(--c-border);">
-          <div>
-            <div style="font-weight:600;font-size:var(--fs-sm);">${U.esc(currentUser.email)}</div>
-            <div style="font-size:10px;color:var(--c-text-muted);margin-top:2px;">${t('account_logged_in')}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--c-surface-alt);border-radius:var(--radius);border:1px solid var(--c-border);gap:8px;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;">${U.esc(currentUser.email)}</div>
+            <div style="font-size:10px;color:var(--c-text-muted);margin-top:2px;">${t('account_logged_in')} · ${U.esc(lastSyncText)}</div>
           </div>
           <button class="btn btn-secondary" style="font-size:var(--fs-xs);padding:6px 14px;" onclick="Goalivo.logout()">${t('account_logout')}</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+          <button class="btn btn-primary" style="font-size:var(--fs-xs);padding:8px 14px;flex:1;" onclick="Goalivo.manualCloudSync()">🔄 지금 동기화</button>
+        </div>
+        <div style="font-size:11px;color:var(--c-text-muted);margin-top:8px;line-height:1.5;">
+          💡 모든 기기(PC·모바일)에서 <b>위와 똑같은 이메일 계정</b>으로 로그인해야 할일이 실시간으로 동기화됩니다. 다른 계정으로 로그인하면 서로 데이터가 보이지 않습니다.
         </div>`;
         } else {
           html += `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--c-surface-alt);border-radius:var(--radius);border:1px solid var(--c-border);">
-          <div style="font-size:var(--fs-sm);color:var(--c-text-muted);">${t('account_sync_msg')}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--c-warning-bg, #fff7ed);border-radius:var(--radius);border:1px solid var(--c-warning, #f59e0b);gap:8px;">
+          <div style="font-size:var(--fs-sm);color:var(--c-text);">⚠ 로그인하지 않으면 이 기기에만 저장되어 <b>다른 기기와 동기화되지 않습니다.</b></div>
           <button class="btn btn-primary" style="font-size:var(--fs-xs);padding:6px 14px;white-space:nowrap;" onclick="Goalivo.openModal('authModal')">${t('account_login')}</button>
         </div>`;
         }
@@ -15305,6 +15378,7 @@ ${checkinLine}
           goalProfiles: await db.goalProfiles.toArray(),
           aiReports: db.aiReports ? await db.aiReports.toArray() : [],
           reviewCheckpoints: await db.reviewCheckpoints.toArray(),
+          undatedTodos: state.undatedTodos || [],
           settings: getCloudSafeSettings(),
           exportedAt: new Date().toISOString()
         };
@@ -15336,6 +15410,10 @@ ${checkinLine}
           if (data.goalProfiles) { await db.goalProfiles.clear(); await db.goalProfiles.bulkAdd(data.goalProfiles); }
           if (data.aiReports && db.aiReports) { await db.aiReports.clear(); await db.aiReports.bulkAdd(data.aiReports); }
           if (data.reviewCheckpoints) { await db.reviewCheckpoints.clear(); await db.reviewCheckpoints.bulkAdd(data.reviewCheckpoints); }
+          if (Array.isArray(data.undatedTodos)) {
+            state.undatedTodos = data.undatedTodos;
+            localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos));
+          }
           if (data.settings) {
             const importedSettings = { ...data.settings };
             delete importedSettings.gcalToken;
@@ -15377,14 +15455,18 @@ ${checkinLine}
             aiReports: db.aiReports ? await db.aiReports.toArray() : [],
             reviewCheckpoints: await db.reviewCheckpoints.toArray(),
             externalEvents: await db.externalEvents.toArray(),
+            undatedTodos: state.undatedTodos || [],
             settings: getCloudSafeSettings(),
             exportedAt: new Date().toISOString()
           };
-          const { error } = await supa.from('user_state').upsert({
+          const { data: saved, error } = await supa.from('user_state').upsert({
             user_id: currentUser.id,
             state_data: data
-          });
+          }).select('updated_at').single();
           if (error) throw error;
+          // 실시간 에코 방지: 방금 올린 변경의 타임스탬프를 기억한다.
+          if (saved && saved.updated_at) lastSyncedCloudTs = saved.updated_at;
+          lastCloudSyncAt = new Date();
           state.cloudDirty = false;
           if (!silent) toast('☁ 클라우드 버전에 저장되었습니다', 'success');
         } catch (e) {
@@ -15405,11 +15487,12 @@ ${checkinLine}
         if (syncBtn) syncBtn.style.stroke = 'var(--c-in-progress)';
         try {
           const { data, error } = await supa.from('user_state')
-            .select('state_data')
+            .select('state_data, updated_at')
             .eq('user_id', currentUser.id)
             .single();
 
           if (error && error.code !== 'PGRST116') throw error;
+          if (data && data.updated_at) lastSyncedCloudTs = data.updated_at;
           const [localGoals, localMilestones, localTimeBlocks, localTaskInstances, localExecutionLogs, localTemplates, localGoalProfiles, localAiReports, localReviewCheckpoints, localExternalEvents] = await Promise.all([
             db.goals.toArray(),
             db.milestones.toArray(),
@@ -15432,7 +15515,8 @@ ${checkinLine}
             goalProfiles: localGoalProfiles.length,
             aiReports: localAiReports.length,
             reviewCheckpoints: localReviewCheckpoints.length,
-            externalEvents: localExternalEvents.length
+            externalEvents: localExternalEvents.length,
+            undatedTodos: Array.isArray(state.undatedTodos) ? state.undatedTodos.length : 0
           };
           const localTotal = Object.values(localCounts).reduce((s, n) => s + (n || 0), 0);
 
@@ -15456,7 +15540,8 @@ ${checkinLine}
             goalProfiles: Array.isArray(cloudData.goalProfiles) ? cloudData.goalProfiles.length : -1,
             aiReports: Array.isArray(cloudData.aiReports) ? cloudData.aiReports.length : -1,
             reviewCheckpoints: Array.isArray(cloudData.reviewCheckpoints) ? cloudData.reviewCheckpoints.length : -1,
-            externalEvents: Array.isArray(cloudData.externalEvents) ? cloudData.externalEvents.length : -1
+            externalEvents: Array.isArray(cloudData.externalEvents) ? cloudData.externalEvents.length : -1,
+            undatedTodos: Array.isArray(cloudData.undatedTodos) ? cloudData.undatedTodos.length : -1
           };
           const cloudKnownTotal = Object.values(cloudCounts).filter(n => n >= 0).reduce((s, n) => s + n, 0);
           if (cloudKnownTotal === 0 && localTotal > 0) {
@@ -15509,6 +15594,13 @@ ${checkinLine}
             if (cloudData.externalEvents.length === 0 && localCounts.externalEvents > 0) protectedTables.push('externalEvents');
             else { await db.externalEvents.clear(); if (cloudData.externalEvents.length > 0) await db.externalEvents.bulkAdd(cloudData.externalEvents); }
           }
+          if (Array.isArray(cloudData.undatedTodos)) {
+            if (cloudData.undatedTodos.length === 0 && localCounts.undatedTodos > 0) protectedTables.push('undatedTodos');
+            else {
+              state.undatedTodos = cloudData.undatedTodos;
+              localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos));
+            }
+          }
 
           if (protectedTables.length > 0) {
             state.cloudDirty = true;
@@ -15527,6 +15619,7 @@ ${checkinLine}
           await loadGoals();
           renderAll();
           state.cloudDirty = false;
+          lastCloudSyncAt = new Date();
           if (!silent) toast('☁ 다른 기기의 데이터를 불러왔습니다', 'success');
         } catch (e) {
           console.error(e);
@@ -16273,6 +16366,9 @@ ${checkinLine}
         signupWithEmail,
         loginWithGoogle,
         logout,
+        manualCloudSync,
+        syncToCloud,
+        syncFromCloud,
         // Expose state for debugging
         get state() { return state; },
         get db() { return db; }
