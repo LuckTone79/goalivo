@@ -7702,6 +7702,8 @@
             id: Date.now(),
             title,
             done: false,
+            priority: 'none',
+            memo: '',
             createdAt: new Date().toISOString()
           });
           persistUndatedTodos();
@@ -7739,6 +7741,94 @@
 
       function deleteUndatedTodo(todoId) {
         state.undatedTodos = (state.undatedTodos || []).filter(t => t.id !== todoId);
+        persistUndatedTodos();
+        renderTaskListModal();
+      }
+
+      function openUndatedTodoDetail(todoId) {
+        const todo = (state.undatedTodos || []).find(t => t.id === todoId);
+        if (!todo) return;
+        state.rightPanelReturnContext = 'taskList';
+        const priorityLabels = { high: '높음', medium: '보통', low: '낮음', none: '없음' };
+        const priorityColors = { high: '#ef4444', medium: '#f59e0b', low: '#3b82f6', none: 'var(--c-text-muted)' };
+        const curPriority = todo.priority || 'none';
+
+        document.getElementById('rightPanelTitle').textContent = '할일 상세';
+        document.getElementById('rightPanelContent').innerHTML = `
+      <div class="detail-card">
+        <div class="detail-card-header">
+          <div class="detail-title-wrap">
+            <div class="detail-title">${U.esc(todo.title)}</div>
+            <div class="detail-chip-row">
+              <span class="detail-chip">${todo.done ? '✅ 완료' : '⬜ 미완료'}</span>
+              <span class="detail-chip" style="color:${priorityColors[curPriority]};">⚡ 우선순위: ${priorityLabels[curPriority]}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-section-title">할일 수정</div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">제목</label>
+          <input class="form-input" id="undatedTodoEditTitle" value="${U.esc(todo.title)}" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">메모</label>
+          <textarea class="form-input" id="undatedTodoEditMemo" rows="3" style="width:100%;resize:vertical;">${U.esc(todo.memo || '')}</textarea>
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">우선순위</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="undatedTodoPriorityGroup">
+            ${['high', 'medium', 'low', 'none'].map(p => `
+              <button class="btn btn-sm ${curPriority === p ? 'btn-primary' : 'btn-secondary'}" data-priority="${p}" onclick="Goalivo.setUndatedTodoPriority(${todo.id},'${p}')" style="${curPriority === p ? `background:${priorityColors[p]};border-color:${priorityColors[p]};color:#fff;` : ''}">${priorityLabels[p]}</button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-section-title">작업</div>
+        <div class="detail-actions">
+          <button class="btn btn-primary" onclick="Goalivo.saveUndatedTodoDetail(${todo.id})">저장</button>
+          <button class="btn ${todo.done ? 'btn-secondary' : 'btn-primary'}" style="${todo.done ? 'background:var(--c-completed);color:#fff;border-color:var(--c-completed);' : ''}" onclick="Goalivo.toggleUndatedTodo(${todo.id});Goalivo.openUndatedTodoDetail(${todo.id});">${todo.done ? '완료 표시 중' : '완료됨으로 표시'}</button>
+          <button class="btn btn-danger" onclick="if(confirm('삭제하시겠습니까?')){Goalivo.deleteUndatedTodo(${todo.id});Goalivo.closeRightPanelToPrevious();}">삭제</button>
+        </div>
+      </div>
+    `;
+        const rp = document.getElementById('rightPanel');
+        rp.classList.add('active');
+        openMobilePanel('right');
+      }
+
+      function setUndatedTodoPriority(todoId, priority) {
+        const todo = (state.undatedTodos || []).find(t => t.id === todoId);
+        if (!todo) return;
+        todo.priority = priority;
+        persistUndatedTodos();
+        openUndatedTodoDetail(todoId);
+      }
+
+      function saveUndatedTodoDetail(todoId) {
+        const todo = (state.undatedTodos || []).find(t => t.id === todoId);
+        if (!todo) return;
+        const titleEl = document.getElementById('undatedTodoEditTitle');
+        const memoEl = document.getElementById('undatedTodoEditMemo');
+        const newTitle = String(titleEl?.value || '').trim();
+        if (!newTitle) { toast('제목을 입력하세요', 'error'); return; }
+        todo.title = newTitle;
+        todo.memo = String(memoEl?.value || '');
+        persistUndatedTodos();
+        renderTaskListModal();
+        openUndatedTodoDetail(todoId);
+        toast('저장되었습니다', 'success');
+      }
+
+      function moveUndatedTodo(todoId, direction) {
+        const todos = state.undatedTodos || [];
+        const idx = todos.findIndex(t => t.id === todoId);
+        if (idx < 0) return;
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= todos.length) return;
+        [todos[idx], todos[targetIdx]] = [todos[targetIdx], todos[idx]];
         persistUndatedTodos();
         renderTaskListModal();
       }
@@ -7809,16 +7899,28 @@
 
         if (incompleteUndated.length > 0) {
           html += `<div style="font-size:var(--fs-sm);font-weight:700;margin:8px 0 6px;">날짜 미정</div>`;
-          html += incompleteUndated.map(todo => `
-            <div class="task-item" style="margin-bottom:6px;">
+          html += incompleteUndated.map((todo, idx) => {
+            const priorityLabels = { high: '높음', medium: '보통', low: '낮음', none: '' };
+            const priorityColors = { high: '#ef4444', medium: '#f59e0b', low: '#3b82f6', none: '' };
+            const p = todo.priority || 'none';
+            const priorityTag = p !== 'none' ? `<span style="font-size:10px;color:${priorityColors[p]};font-weight:600;">⚡${priorityLabels[p]}</span>` : '';
+            const allUndated = state.undatedTodos || [];
+            const globalIdx = allUndated.findIndex(t => t.id === todo.id);
+            const canUp = globalIdx > 0;
+            const canDown = globalIdx < allUndated.length - 1;
+            return `
+            <div class="task-item" style="margin-bottom:6px;cursor:pointer;" onclick="Goalivo.openUndatedTodoDetail(${todo.id});Goalivo.closeModal('taskListModal');">
               <div class="checkbox" onclick="event.stopPropagation();Goalivo.toggleUndatedTodo(${todo.id})"></div>
               <div style="flex:1;min-width:0;">
                 <div class="task-item-text">${U.esc(todo.title)}</div>
-                <div class="task-item-meta">날짜 미정</div>
+                <div class="task-item-meta">날짜 미정 ${priorityTag}</div>
               </div>
-              <button class="btn btn-xs btn-danger" onclick="event.stopPropagation();Goalivo.deleteUndatedTodo(${todo.id})">삭제</button>
-            </div>
-          `).join('');
+              <div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">
+                <button class="btn-icon" style="width:24px;height:24px;font-size:12px;opacity:${canUp ? 1 : 0.3};" onclick="event.stopPropagation();Goalivo.moveUndatedTodo(${todo.id},-1)" ${canUp ? '' : 'disabled'}>▲</button>
+                <button class="btn-icon" style="width:24px;height:24px;font-size:12px;opacity:${canDown ? 1 : 0.3};" onclick="event.stopPropagation();Goalivo.moveUndatedTodo(${todo.id},1)" ${canDown ? '' : 'disabled'}>▼</button>
+              </div>
+            </div>`;
+          }).join('');
         }
 
         let currentDate = '';
@@ -7852,13 +7954,12 @@
             if (completeUndated.length > 0) {
               html += `<div style="font-size:var(--fs-sm);font-weight:700;margin:8px 0 6px;">날짜 미정</div>`;
               html += completeUndated.map(todo => `
-                <div class="task-item" style="margin-bottom:6px;">
+                <div class="task-item" style="margin-bottom:6px;cursor:pointer;" onclick="Goalivo.openUndatedTodoDetail(${todo.id});Goalivo.closeModal('taskListModal');">
                   <div class="checkbox checked" onclick="event.stopPropagation();Goalivo.toggleUndatedTodo(${todo.id})"></div>
                   <div style="flex:1;min-width:0;">
                     <div class="task-item-text done">${U.esc(todo.title)}</div>
                     <div class="task-item-meta">날짜 미정</div>
                   </div>
-                  <button class="btn btn-xs btn-danger" onclick="event.stopPropagation();Goalivo.deleteUndatedTodo(${todo.id})">삭제</button>
                 </div>
               `).join('');
             }
@@ -8085,6 +8186,13 @@
         const plannedMinutes = task.plannedMinutes || 0;
         const statusLabel = done ? '완료' : '진행 중';
         const statusColor = done ? 'var(--c-completed)' : 'var(--c-in-progress)';
+        const priorityLabels = { high: '높음', medium: '보통', low: '낮음', none: '없음' };
+        const priorityColors = { high: '#ef4444', medium: '#f59e0b', low: '#3b82f6', none: 'var(--c-text-muted)' };
+        const curPriority = task.priority || 'none';
+
+        const goalOptions = state.goals.filter(g => g.status !== 'completed').map(g =>
+          `<option value="${g.id}" ${task.goalId === g.id ? 'selected' : ''}>${U.esc(g.name)}</option>`
+        ).join('');
 
         document.getElementById('rightPanelTitle').textContent = '할 일 상세';
         document.getElementById('rightPanelContent').innerHTML = `
@@ -8096,22 +8204,49 @@
             <div class="detail-chip-row">
               <span class="detail-chip">✅ 할 일</span>
               <span class="detail-chip"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor};"></span> ${statusLabel}</span>
+              ${curPriority !== 'none' ? `<span class="detail-chip" style="color:${priorityColors[curPriority]};">⚡ ${priorityLabels[curPriority]}</span>` : ''}
               ${goal ? `<span class="detail-chip"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${goal.color};"></span> ${U.esc(goal.name)}</span>` : `<span class="detail-chip">미분류</span>`}
             </div>
           </div>
         </div>
       </div>
       <div class="detail-card">
-        <div class="detail-section-title">기본 정보</div>
-        <div class="detail-kv"><div class="k">날짜</div><div class="v">${task.date}</div></div>
-        <div class="detail-kv"><div class="k">예상 시간</div><div class="v">${plannedMinutes}분</div></div>
-        <div class="detail-kv"><div class="k">상태</div><div class="v">${statusLabel}</div></div>
+        <div class="detail-section-title">할일 수정</div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">제목</label>
+          <input class="form-input" id="taskEditTitle" value="${U.esc(task.title || '')}" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">날짜</label>
+          <input class="form-input" type="date" id="taskEditDate" value="${task.date}" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">예상 시간 (분)</label>
+          <input class="form-input" type="number" id="taskEditMinutes" value="${plannedMinutes}" min="0" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">목표</label>
+          <select class="form-input" id="taskEditGoal" style="width:100%;">
+            <option value="">미분류</option>
+            ${goalOptions}
+          </select>
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">우선순위</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="taskPriorityGroup">
+            ${['high', 'medium', 'low', 'none'].map(p => `
+              <button class="btn btn-sm ${curPriority === p ? 'btn-primary' : 'btn-secondary'}" data-priority="${p}" onclick="Goalivo.setTaskPriority(${task.id},'${p}')" style="${curPriority === p ? `background:${priorityColors[p]};border-color:${priorityColors[p]};color:#fff;` : ''}">${priorityLabels[p]}</button>
+            `).join('')}
+          </div>
+        </div>
       </div>
       <div class="detail-card">
         <div class="detail-section-title">작업</div>
         <div class="detail-actions">
+          <button class="btn btn-primary" onclick="Goalivo.saveTaskDetail(${task.id})">저장</button>
           <button class="btn ${done ? 'btn-secondary' : 'btn-primary'}" style="${done ? 'background:var(--c-completed);color:#fff;border-color:var(--c-completed);' : ''}" onclick="Goalivo.toggleTask(${task.id}, { keepDetail: true })">${done ? '완료 표시 중' : '완료됨으로 표시'}</button>
           <button class="btn btn-secondary" onclick="Goalivo.viewDayDetail('${task.date}')">해당 일 보기</button>
+          <button class="btn btn-danger" onclick="if(confirm('이 할일을 삭제하시겠습니까?')){Goalivo.deleteTask(${task.id});}">삭제</button>
         </div>
       </div>
     `;
@@ -8187,6 +8322,53 @@
         renderAll();
         if (options.keepDetail) openTaskDetail(taskId);
         toast(newStatus === 'completed' ? '완료!' : '미완료로 변경', 'success');
+      }
+
+      async function saveTaskDetail(taskId) {
+        const task = state.taskInstances.find(t => t.id === taskId);
+        if (!task) return;
+        const titleEl = document.getElementById('taskEditTitle');
+        const dateEl = document.getElementById('taskEditDate');
+        const minutesEl = document.getElementById('taskEditMinutes');
+        const goalEl = document.getElementById('taskEditGoal');
+        const newTitle = String(titleEl?.value || '').trim();
+        if (!newTitle) { toast('제목을 입력하세요', 'error'); return; }
+        const newDate = dateEl?.value || task.date;
+        const newMinutes = parseInt(minutesEl?.value || '0', 10) || 0;
+        const newGoalId = goalEl?.value ? parseInt(goalEl.value, 10) : null;
+        await db.taskInstances.update(taskId, {
+          title: newTitle,
+          date: newDate,
+          plannedMinutes: newMinutes,
+          goalId: newGoalId
+        });
+        await loadGoals();
+        renderAll();
+        openTaskDetail(taskId);
+        toast('저장되었습니다', 'success');
+      }
+
+      async function setTaskPriority(taskId, priority) {
+        const task = state.taskInstances.find(t => t.id === taskId);
+        if (!task) return;
+        await db.taskInstances.update(taskId, { priority });
+        await loadGoals();
+        renderAll();
+        openTaskDetail(taskId);
+      }
+
+      async function deleteTask(taskId) {
+        const task = state.taskInstances.find(t => t.id === taskId);
+        if (!task) return;
+        const logs = state.executionLogs.filter(l => l.taskId === taskId);
+        if (logs.length > 0) {
+          await db.executionLogs.bulkDelete(logs.map(l => l.id));
+        }
+        await db.taskInstances.delete(taskId);
+        await loadGoals();
+        renderAll();
+        closeRightPanelToPrevious();
+        toast('삭제되었습니다', 'success');
       }
 
       /* ============================================================
@@ -16260,6 +16442,9 @@ ${checkinLine}
         deleteBlock,
         quickAddBlock,
         toggleTask,
+        saveTaskDetail,
+        setTaskPriority,
+        deleteTask,
         toggleTodayTodoOnly,
         openTaskListModal,
         openDdayModal,
@@ -16268,6 +16453,11 @@ ${checkinLine}
         addUndatedTodo,
         toggleUndatedTodo,
         deleteUndatedTodo,
+        openUndatedTodoDetail,
+        saveUndatedTodoDetail,
+        setUndatedTodoPriority,
+        moveUndatedTodo,
+        closeRightPanelToPrevious,
         openSearchModal,
         runSearch,
         openTaskDetail,
