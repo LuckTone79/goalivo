@@ -8,10 +8,16 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    // Supabase의 Public Key와 URL만 안전하게 클라이언트로 전달합니다.
-    // 이 외의 Secret Key나 AI API Key는 클라이언트로 전달하면 안 됩니다.
+    // wideget-core 표준 변수명(NEXT_PUBLIC_*)을 우선 사용하고,
+    // 기존 배포와의 호환을 위해 레거시 변수명(SUPABASE_URL/ANON_KEY)으로 폴백합니다.
+    // Public Key(anon)와 URL만 클라이언트로 전달합니다.
+    // service_role key 등 비밀 키는 절대 클라이언트로 전달하지 않습니다.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+
     return res.status(200).json({
-        supabaseUrl: process.env.SUPABASE_URL || "",
-        supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ""
+        supabaseUrl,
+        supabaseAnonKey,
+        appId: "goalivo"
     });
 };

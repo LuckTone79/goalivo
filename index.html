@@ -4670,6 +4670,9 @@
       let SUPABASE_URL = '';
       let SUPABASE_ANON_KEY = '';
 
+      // wideget-core 통합: 이 앱의 고정 app_id. public.apps / public.app_memberships 와 매칭된다.
+      const WIDEGET_APP_ID = 'goalivo';
+
       let supa = null;
       let currentUser = null;
       const FEEDBACK_ADMIN_EMAIL = 'luck2s7912@gmail.com';
@@ -4889,6 +4892,7 @@
           const { data: { session } } = await supa.auth.getSession();
           if (session) {
             currentUser = session.user;
+            ensureWidegetMembership();
             if (session.provider_token) {
               persistGcalToken(session.provider_token);
             } else if (restoreGcalToken()) {
@@ -4908,6 +4912,7 @@
               state.gcalConnected = true;
             }
             if (currentUser) {
+              ensureWidegetMembership();
               syncFromCloud({ silent: true });
               startCloudAutoPull();
               startCloudRealtime();
@@ -4923,6 +4928,29 @@
         } catch (e) {
           console.warn('[Goalivo] Auth init error:', e);
         }
+      }
+
+      // wideget-core 통합: 로그인 후 공통 레지스트리에 프로필/멤버십을 보장한다.
+      // 통합 마이그레이션 적용 이전에는 테이블이 없을 수 있으므로 모든 오류를 조용히 무시한다.
+      // 권한 승격(role/status)은 RLS로 차단되어 있으며 service_role 서버에서만 가능하다.
+      async function ensureWidegetMembership() {
+        if (!supa || !currentUser) return;
+        const meta = currentUser.user_metadata || {};
+        try {
+          // 공통 프로필: 없으면 생성, 있으면 그대로 둔다(사용자 편집 값 보존).
+          await supa.from('global_profiles').upsert({
+            user_id: currentUser.id,
+            display_name: meta.full_name || meta.name || currentUser.email || null,
+            avatar_url: meta.avatar_url || meta.picture || null
+          }, { onConflict: 'user_id', ignoreDuplicates: true });
+        } catch (e) { /* global_profiles 미존재/마이그레이션 이전 상태 호환 */ }
+        try {
+          // 앱 멤버십: goalivo 앱에 최초 가입 시 1행 생성(role='user', status='active' 기본값).
+          await supa.from('app_memberships').upsert({
+            app_id: WIDEGET_APP_ID,
+            user_id: currentUser.id
+          }, { onConflict: 'app_id,user_id', ignoreDuplicates: true });
+        } catch (e) { /* app_memberships 미존재/마이그레이션 이전 상태 호환 */ }
       }
 
       function updateAuthUI() {
@@ -5213,7 +5241,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.06.03-02';
+      const APP_VERSION = 'v2026.07.07-01';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
