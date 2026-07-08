@@ -33,6 +33,29 @@ create policy "<app> write own"
   with check (bucket_id = '<app>-media' and (storage.foldername(name))[1] = auth.uid()::text);
 ```
 
+## 2.5 준비된 이관 스크립트 (`scripts/wideget-migrate-storage.mjs`)
+
+비파괴 복사(원본 유지) 스크립트가 준비되어 있습니다. 키는 **ENV 로만** 주입(하드코딩 금지):
+
+```bash
+# 예: kadit-images 이관 (먼저 --dry-run 으로 목록 확인 권장)
+export SRC_SUPABASE_URL=https://chkjnszxisljiywjtqve.supabase.co
+export SRC_SERVICE_ROLE_KEY=***source-service-role***
+export DST_SUPABASE_URL=https://ossqwphalaxhmadmffsn.supabase.co
+export DST_SERVICE_ROLE_KEY=***widetcore-service-role***
+
+node scripts/wideget-migrate-storage.mjs kadit-images kadit-images --dry-run
+node scripts/wideget-migrate-storage.mjs kadit-images kadit-images
+
+# 다른 앱 예시
+node scripts/wideget-migrate-storage.mjs payment-proof    castfolio-payment-proof
+node scripts/wideget-migrate-storage.mjs scenario-exports locawing-scenario-exports
+node scripts/wideget-migrate-storage.mjs test-reports     locawing-test-reports
+```
+- 대상 bucket 이 없으면 생성(기본 private). 공개 버킷은 `--public`.
+- 원본 삭제 안 함. 실패 객체는 로그로 표시.
+- 실행은 **버킷 정책 결정 후** wideget-core 대상으로만.
+
 ## 3. 수동 이관 절차 (기존 project → wideget-core)
 각 앱이 별도 프로젝트에 bucket 을 갖고 있다면:
 1. wideget-core 에 대상 bucket 생성(위 네이밍/정책).
