@@ -41,19 +41,15 @@
 
 ---
 
-## 2. castfolio (DB 실측 완료 · 코드/ENV 확인 필요)
+## 2. castfolio (DB 실측 완료 · **두 앱 공존 발견**)
 
 - project: `vrbawgqrhigtkyiengkm` (ap-southeast-1) · auth users: 2
-- 기존 스키마: `public` + 이미 존재하는 `castfolio` 스키마
+- ⚠️ **한 프로젝트에 서로 다른 두 앱이 공존**:
+  - `public`(21테이블): **트레이딩/배틀 앱**. 활성 데이터(battles 88, strategies 10, signal_boxes 10). **자체 커스텀 인증**(`users.password_hash`, Supabase Auth 아님, user_id → public.users).
+  - `castfolio`(28테이블 Prisma PascalCase): **탤런트 에이전시 커머스 앱**. 시드만(User/Talent/Project 각 1). **Supabase Auth 통합**(`User.supabaseUid`).
 - Storage bucket: **`payment-proof`**
-- public 테이블 21개, user_id 유무 분류:
-
-| 분류 | 테이블 |
-|---|---|
-| 사용자 소유(user_id/created_by uuid) | `battle_votes`, `box_messages`, `box_threads`(created_by), `claim_votes`, `claims`, `likes`, `notifications`, `score_history`, `season_results`, `sp_transactions`, `unlocks` |
-| 앱 공유/참조(유저 컬럼 없음) | `backtest_results`, `battles`, `follows`, `seasons`, `signal_boxes`, `strategies`, `strategy_snapshots`, `users`, `verification_queue`, `weekly_events` |
-
-- 확인 필요: Supabase URL/anon/service 변수명, Auth 방식, callback route, `castfolio` 스키마 현재 용도, `follows`/`users` 의 유저 참조 방식(FK).
+- 사용자 결정 = **둘 다 스키마 분리 이관** → wideget-core `castfolio`(트레이딩) + `castfolio_agency`(에이전시). 구조 미러 **적용 완료**.
+- 확인 필요: 각 앱 저장소/코드/ENV/callback, 트레이딩 앱의 인증 통합 방식(커스텀 유지 vs Supabase Auth 이전).
 
 ## 3. kadit (DB 실측 완료 · 코드/ENV 확인 필요)
 
@@ -87,7 +83,7 @@
 | 앱 | DB 실측 | 대상 스키마(wideget-core) | Storage | 코드/ENV |
 |---|---|---|---|---|
 | Goalivo | ✅ | `goalivo` (생성됨) | 미사용 | 확인+반영 완료 |
-| castfolio | ✅ 21테이블 | `castfolio` (생성됨) | `payment-proof` | 저장소 추가 필요 |
+| castfolio | ✅ 21+28테이블 | `castfolio`(트레이딩)+`castfolio_agency`(에이전시) 미러 완료 | `payment-proof` | 저장소 추가 필요 |
 | kadit | ✅ 9테이블(전부 user_id) | `kadit` (생성됨) | `kadit-images` | 저장소 추가 필요 |
 | locawing | ✅ 9테이블 | `locawing` (생성됨) | `scenario-exports`, `test-reports` | 저장소 추가 필요 |
 | ~~qkiki~~ | 조회 안 함 | (제외) | (제외) | (제외) |

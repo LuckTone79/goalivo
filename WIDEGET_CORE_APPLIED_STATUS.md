@@ -51,10 +51,13 @@ email 기준 사용자 매핑 → user_id 재매핑이 필요(파괴적/위험 �
 - ✅ **kadit** 스키마: 9테이블 빈 미러 + RLS(9) + FK(13) + 트리거(5) **적용 완료**.
 - ✅ **locawing** 스키마: 9테이블 빈 미러 + RLS(9) + FK(14) + 검사(9) **적용 완료**.
   (`profiles.id=auth.users.id`, 나머지 `user_id→profiles.id` 관계 충실 반영, 시나리오/디바이스 스코프 RLS 포함)
-- ⏳ **castfolio** 스키마: **결정 대기**. castfolio 프로젝트가 두 도메인 포함:
-  - `public`(21테이블, 활성: battles 88/strategies 10/signal_boxes 10) — 트레이딩/배틀 앱
-  - `castfolio`(28테이블 Prisma, 시드: User/Talent/Project 각 1) — 탤런트 에이전시 커머스
-  → 어느 스키마를 wideget-core `castfolio` 로 이관할지 사람 결정 필요.
+- ✅ **castfolio** (사용자 결정: 둘 다 스키마 분리):
+  - `castfolio` 스키마: **21테이블 미러** (트레이딩/배틀 앱, source public). FK 30. RLS 활성.
+    ⚠️ 이 앱은 **자체 커스텀 인증**(`castfolio.users.password_hash`, Supabase Auth 아님). FK 는 `castfolio.users(id)`.
+    → RLS 활성 + **정책 없음 = service_role 전용**(안전 기본값). 온보딩 시 정책 정의(커스텀 users → Supabase Auth 이전 검토).
+  - `castfolio_agency` 스키마(신규 추가): **28테이블 미러** (Prisma 탤런트 에이전시). enum 17, FK 34, unique 12. RLS 활성.
+    이 앱은 Supabase Auth 통합(`User.supabaseUid`). RLS 활성 + service_role 전용(온보딩 시 supabaseUid 기반 정책 정의).
+  - Advisor: castfolio/castfolio_agency 49테이블에 `rls_enabled_no_policy`(INFO). **의도된 안전 기본값**(authenticated 접근 차단). ERROR/신규 WARN 없음.
 - ✅ 문서: `WIDEGET_CORE_DATA_MIGRATION_PLAN.md`(B 상세), `WIDEGET_CORE_APP_REPO_ONBOARDING.md`(저장소 추가/코드 표준화), `scripts/wideget-migrate-storage.mjs`(비파괴 Storage 복사) 준비.
 
 ### 이관 실행은 아직 안 함(설계만)

@@ -59,13 +59,23 @@ create table if not exists migration_ops.user_id_map (
   3. blocks, scenario_points, schedules, test_reports, commands, location_logs
 - Storage: `scenario-exports`, `test-reports` → 동명 버킷.
 
-## 4. castfolio 데이터 이관 (⚠️ 스키마 결정 대기)
-castfolio 프로젝트는 **두 도메인**을 포함:
-- `public`(21테이블, 활성: battles 88 / strategies 10 / signal_boxes 10 / users 1) — 트레이딩/배틀 앱.
-- `castfolio`(28테이블 Prisma PascalCase, 시드 수준: User 1 / Talent 1 / Project 1, 나머지 0) — 탤런트 에이전시 커머스 앱.
+## 4. castfolio 데이터 이관 (구조 준비 완료 · 둘 다 스키마 분리)
+castfolio 프로젝트는 **두 도메인**을 포함하며, 결정에 따라 wideget-core 에 각각 별도 스키마로 미러 완료:
+- source `public`(트레이딩/배틀, 21테이블) → wideget-core **`castfolio`**.
+- source `castfolio`(Prisma 탤런트 에이전시, 28테이블) → wideget-core **`castfolio_agency`**.
 
-→ **어느 스키마(들)를 wideget-core `castfolio` 로 이관할지 사람이 결정**해야 함(본 리포트 질문 참조).
-결정 후 kadit/locawing 과 동일 절차로 구조 미러 + 데이터 이관 설계를 확정한다.
+### 4.1 트레이딩/배틀(`castfolio`) — ⚠️ 커스텀 인증
+- 이 앱은 **Supabase Auth 를 쓰지 않음**. 자체 `users`(password_hash) 사용, 모든 user_id → `castfolio.users(id)`.
+- 이관 전략 2가지 중 택1(사람 결정 필요):
+  - (a) **커스텀 users 그대로 이관**: `castfolio.users` 에 password_hash 포함 이관. 앱은 계속 자체 인증 + service_role 접근. RLS 는 service_role 전용 유지.
+  - (b) **Supabase Auth 로 통합**(권장): 각 users 를 Auth Admin API 로 생성(비밀번호는 재설정 유도), user_id 매핑 후 이관, RLS 를 auth.uid() 기반으로 재작성. password_hash 는 이관하지 않음(보안).
+- FK 위상 순서: users, seasons → strategies → strategy_snapshots → (backtest_results, signal_boxes, battles) → claims → box_threads → (box_messages, votes, follows, likes, notifications, score_history, season_results, sp_transactions, unlocks, verification_queue, weekly_events).
+
+### 4.2 에이전시(`castfolio_agency`) — Supabase Auth 통합
+- `User.supabaseUid` 가 Supabase auth.users 와 연결. 이관 시 `supabaseUid` 를 wideget-core auth uid 로 재매핑.
+- 다른 테이블은 `userId → User.id`(Prisma cuid, 불변) 이므로 **User 매핑만** 정리하면 나머지 id 는 그대로 이관 가능.
+- FK 위상 순서: User → (Talent, ProductPackage, SettlementBatch, AdminNote, AuditLog, Notification) → Project → (Pricing*, RevisionPolicy) → (IntakeForm, MediaAsset, ProjectTimeline, Page, PageVersion, Quote) → (IntakeSubmission, PageView, QRAsset, QuoteLineItem) → Order → (OrderLineItem, CommissionLedger, PaymentRecord, RefundRecord).
+- Storage: `payment-proof` → wideget-core `castfolio-payment-proof`.
 
 ## 5. 실행 방식(도구)
 - **테이블 데이터**: `user_id` 치환이 필요하므로 단순 pg_dump 로는 부족. 권장:
