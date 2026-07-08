@@ -1,118 +1,100 @@
 # SUPABASE 4-App Inventory (wideget-core 통합 대상)
 
-> 작성일: 2026-07-07 · 기준 프로젝트: 기존 **Goalivo** Supabase project → 사람이 대시보드에서 **wideget-core** 로 표시 이름 변경 예정.
+> 작성일: 2026-07-07 · 갱신: 2026-07-08 (Supabase MCP 로 4개 앱 DB 실측 반영)
+> 기준 프로젝트: 기존 **Goalivo** Supabase project → **wideget-core** 로 표시 이름 변경 **완료**.
 
-## 0. 중요한 범위 사실 (반드시 먼저 읽을 것)
+## 0. 범위 / 조사 경로
 
-이 세션의 **workspace 에는 `goalivo` 저장소 하나만 존재**합니다.
+- 이 세션 workspace 에는 **`goalivo` 저장소 하나만** 존재합니다(코드/ENV/콜백 라우트는 Goalivo 만 직접 확인 가능).
+- 단, **Supabase MCP** 로는 조직 내 모든 프로젝트 DB 에 접근되어, castfolio/kadit/locawing 의 **DB 구조(테이블/컬럼/스토리지/유저수)는 실측 완료**했습니다.
+- 따라서 아래 표기 기준:
+  - **DB 구조** = 실측 완료(MCP)
+  - **앱 코드 / ENV 변수명 / auth callback 라우트** = 저장소 미포함 → `확인 필요`
+- `qkiki`(=yapp), `one-more-rep` 은 통합 제외이며 **DB 도 조회하지 않았습니다**(건드리지 않음). `EXCLUDED_PROJECTS.md` 참고.
 
-- `git`/`ls` 확인 결과 루트에 있는 것은 Goalivo 웹앱뿐입니다 (`index.html`, `api/`, `supabase/`, `scripts/`).
-- `castfolio`, `kadit`, `locawing` 는 **별도 저장소**이며 이 세션에 클론되어 있지 않습니다.
-- 세션 저장소 스코프도 `lucktone79/goalivo` 로 한정되어 있고, `list_repos` 는 이 계정 세션에서 사용 불가로 응답했습니다.
-- 따라서 **castfolio/kadit/locawing 의 실제 코드/ENV/테이블은 이 세션에서 직접 조사·수정할 수 없습니다.**
-  - 이 문서에서 해당 3개 앱 항목은 "확인 필요(저장소 추가 후 조사)" 로 표시합니다.
-  - 통합 SQL(공통 스키마)과 앱별 적용 체크리스트는 모두 준비되어 있으며, 저장소만 추가되면 바로 적용 가능합니다.
+## 프로젝트 ref 맵 (조직 `xnstgtymyoiqyhxrudtm`)
 
-`qkiki`(=yapp), `one-more-rep` 은 통합 제외 대상이며 이 세션에 폴더도 없습니다. `EXCLUDED_PROJECTS.md` 참고.
-
----
-
-## 1. Goalivo (조사 완료 · 이 세션에 존재)
-
-| 항목 | 값 |
-|---|---|
-| 형태 | 정적 웹앱 (`index.html`) + Vercel Node serverless (`api/*.js`). **Next.js 아님.** |
-| Supabase SDK | CDN UMD: `@supabase/supabase-js@2` (`index.html` `<script>`), 서버 `@supabase/supabase-js@^2.101.1` (package.json) |
-| 클라이언트 생성 | `window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)` — 값은 런타임에 `GET /api/config` 로 수신 |
-| 현재 기존 Supabase project ref | `ossqwphalaxhmadmffsn` (기존 migration 주석에 명시. = 통합 기반 프로젝트) |
-
-### 1.1 환경변수 (변수명/존재만 기록 — 실제 키 값은 미기재)
-
-| 변수명 | 위치 | 노출 경로 | 비고 |
-|---|---|---|---|
-| `SUPABASE_URL` | Vercel env → `api/config.js` | `/api/config` 로 클라이언트 전달 | 통합 후 `NEXT_PUBLIC_SUPABASE_URL` 우선, 레거시 폴백 유지 |
-| `SUPABASE_ANON_KEY` | Vercel env → `api/config.js` | `/api/config` 로 클라이언트 전달 | anon key (공개 가능) |
-| `OPENAI_API_KEY` | Vercel env → `api/ai.js`, `api/image.js` | **서버 전용** | 프론트 노출 안 함 |
-| `ANTHROPIC_API_KEY` | Vercel env → `api/ai.js` | **서버 전용** | 프론트 노출 안 함 |
-| `OPENAI_MODEL`/`OPENAI_WEB_MODEL`/`OPENAI_IMAGE_MODEL`/`ANTHROPIC_MODEL` | Vercel env (선택) | 서버 전용 | 모델 오버라이드 |
-| `SUPABASE_SERVICE_ROLE_KEY` | **현재 미사용** | — | 통합 표준에 추가(서버 전용). 현재 코드에서 참조 없음 |
-
-> service_role key 는 현재 코드 어디에서도 참조하지 않습니다. 통합 표준 변수로만 추가하며 서버 라우트에서만 사용합니다.
-
-### 1.2 Auth
-
-| 항목 | 값 |
-|---|---|
-| 사용 여부 | **사용함** |
-| 방식 | 이메일/비밀번호 (`signInWithPassword`, `signUp`) + Google OAuth (`signInWithOAuth({provider:'google'})`) |
-| 세션 처리 | `supa.auth.getSession()` + `supa.auth.onAuthStateChange(...)` (SPA, 서버 콜백 라우트 없음) |
-| OAuth redirect | `window.location.origin + window.location.pathname` (동적) — 별도 `/auth/callback` 라우트 없음 |
-| 관리자 식별 | `FEEDBACK_ADMIN_EMAIL = 'luck2s7912@gmail.com'` (피드백 보드 UI 용도) |
-
-### 1.3 테이블 / 스키마 (현재 사용, 모두 `public`)
-
-| 테이블 | 용도 | 접근 코드 | user 컬럼 |
-|---|---|---|---|
-| `public.user_state` | 앱 상태 전체를 JSONB 1행/유저로 저장·동기화 | `supa.from('user_state').upsert/select` (`syncToCloud`/`syncFromCloud`) | `user_id` (PK), `state_data jsonb`, `updated_at` |
-| `public.feedback_posts` | 피드백 게시판 | `supa.from('feedback_posts').insert/select/update` | `user_id`, `user_email`, `title`, `body`, `category`, `status`, `images_json`, `created_at`, `id` |
-
-- Realtime: `public.user_state` 에 활성화됨 (`supabase/migrations/20260620_enable_realtime_user_state.sql`).
-- `feedback_posts` DDL 은 저장소에 `supabase-feedback.sql` 로 존재했으나 `.gitignore` 처리되어 현재 트리에는 없음(운영 프로젝트에는 적용됨). → 통합 시 `goalivo` 스키마로 이관 대상(설계서 참고).
-
-### 1.4 Storage / Edge Functions
-
-| 항목 | 값 |
-|---|---|
-| Storage bucket | **미사용.** 피드백 이미지는 Storage 가 아니라 base64(`images_json`)로 `feedback_posts` 에 저장. |
-| Edge Functions | **미사용.** (`supabase/functions/` 없음) |
+| 앱 | project ref | region | auth users | 통합 |
+|---|---|---|---|---|
+| **wideget-core** (구 Goalivo) | `ossqwphalaxhmadmffsn` | ap-south-1 | (기존) | 통합 메인 |
+| castfolio | `vrbawgqrhigtkyiengkm` | ap-southeast-1 | 2 | 대상 |
+| kadit | `chkjnszxisljiywjtqve` | ap-northeast-2 | 2 | 대상 |
+| locawing | `nkizvcbesznhvwgskxhy` | ap-northeast-2 | 1 | 대상 |
+| qkiki | `xoxnkezwrrbwkdjlupkp` | us-west-1 | — | **제외(독립)** |
+| one-more-rep | `uuuogjemtqahnztnxicn` | ap-northeast-2 | — | **제외(독립)** |
 
 ---
 
-## 2. castfolio (확인 필요 · 저장소 미포함)
+## 1. Goalivo → wideget-core (조사 완료)
 
-| 항목 | 상태 |
+| 항목 | 값 |
 |---|---|
-| workspace 존재 | ❌ 이 세션에 없음 |
-| Supabase URL 변수명 | 확인 필요 |
-| anon key 변수명 | 확인 필요 |
-| service role 변수명 | 확인 필요 |
-| Auth 사용 | 확인 필요 |
-| auth callback route | 확인 필요 |
-| 테이블/스키마 | 확인 필요 → 통합 시 `castfolio` 스키마 |
-| Storage bucket | 확인 필요 |
-| Edge function | 확인 필요 |
-
-> 조사 방법: 이 세션에 `castfolio` 저장소를 추가(`add_repo`)한 뒤 §1 과 동일한 항목을 채운다.
-
-## 3. kadit (확인 필요 · 저장소 미포함)
-
-| 항목 | 상태 |
-|---|---|
-| workspace 존재 | ❌ 이 세션에 없음 |
-| Supabase URL/anon/service 변수명 | 확인 필요 |
-| Auth / callback route | 확인 필요 |
-| 테이블/스키마 | 확인 필요 → 통합 시 `kadit` 스키마 |
-| Storage / Edge function | 확인 필요 |
-
-## 4. locawing (확인 필요 · 저장소 미포함)
-
-| 항목 | 상태 |
-|---|---|
-| workspace 존재 | ❌ 이 세션에 없음 |
-| Supabase URL/anon/service 변수명 | 확인 필요 |
-| Auth / callback route | 확인 필요 |
-| 테이블/스키마 | 확인 필요 → 통합 시 `locawing` 스키마 |
-| Storage / Edge function | 확인 필요 |
+| 형태 | 정적 웹앱(`index.html`) + Vercel Node serverless(`api/*.js`). Next.js 아님. |
+| 클라이언트 | `window.supabase.createClient(URL, ANON)` — 값은 `GET /api/config` 로 런타임 수신 |
+| ENV | `SUPABASE_URL`, `SUPABASE_ANON_KEY`(→ 표준 `NEXT_PUBLIC_*` 로 이전, 레거시 폴백 유지), `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`(서버 전용), `SUPABASE_SERVICE_ROLE_KEY`(신규 표준·현재 코드 미사용) |
+| Auth | Email/PW + Google OAuth (SPA, 서버 콜백 없음), redirect = `origin+pathname` |
+| 테이블(public) | `user_state`(user_id PK, state_data jsonb, updated_at), `feedback_posts`(user_id, user_email, title, body, category, status, images_json, created_at, id) |
+| Realtime | `public.user_state` 활성 |
+| Storage | ❌ 미사용(피드백 이미지 base64) |
+| Edge fn | ❌ |
+| 통합 후 상태 | 공통 스키마 + `goalivo` 스키마 **적용 완료**. user_state/feedback_posts 는 현행 유지(점진 이관 대상). |
 
 ---
 
-## 5. 통합 대상 요약표
+## 2. castfolio (DB 실측 완료 · 코드/ENV 확인 필요)
 
-| 앱 | 이 세션 존재 | 대상 스키마 | Auth | Storage | 조사 상태 |
-|---|---|---|---|---|---|
-| Goalivo | ✅ | `goalivo` | Email + Google | 미사용 | 완료 |
-| castfolio | ❌ | `castfolio` | 확인 필요 | 확인 필요 | 대기(저장소 추가) |
-| kadit | ❌ | `kadit` | 확인 필요 | 확인 필요 | 대기(저장소 추가) |
-| locawing | ❌ | `locawing` | 확인 필요 | 확인 필요 | 대기(저장소 추가) |
-| ~~qkiki~~ | ❌ | (제외) | — | — | 통합 제외(독립 유지) |
-| ~~one-more-rep~~ | ❌ | (제외) | — | — | 통합 제외(독립 유지) |
+- project: `vrbawgqrhigtkyiengkm` (ap-southeast-1) · auth users: 2
+- 기존 스키마: `public` + 이미 존재하는 `castfolio` 스키마
+- Storage bucket: **`payment-proof`**
+- public 테이블 21개, user_id 유무 분류:
+
+| 분류 | 테이블 |
+|---|---|
+| 사용자 소유(user_id/created_by uuid) | `battle_votes`, `box_messages`, `box_threads`(created_by), `claim_votes`, `claims`, `likes`, `notifications`, `score_history`, `season_results`, `sp_transactions`, `unlocks` |
+| 앱 공유/참조(유저 컬럼 없음) | `backtest_results`, `battles`, `follows`, `seasons`, `signal_boxes`, `strategies`, `strategy_snapshots`, `users`, `verification_queue`, `weekly_events` |
+
+- 확인 필요: Supabase URL/anon/service 변수명, Auth 방식, callback route, `castfolio` 스키마 현재 용도, `follows`/`users` 의 유저 참조 방식(FK).
+
+## 3. kadit (DB 실측 완료 · 코드/ENV 확인 필요)
+
+- project: `chkjnszxisljiywjtqve` (ap-northeast-2) · auth users: 2
+- 기존 스키마: `public` 만
+- Storage bucket: **`kadit-images`**
+- public 테이블 9개 — **전부 `kadit_` 접두사 + 전부 `user_id uuid` 보유**:
+  `kadit_artifacts`, `kadit_generation_schedules`, `kadit_image_jobs`, `kadit_render_jobs`, `kadit_renders`, `kadit_scheduled_runs`, `kadit_source_feeds`, `kadit_source_items`, `kadit_versions`
+- 특징: 이미 사용자별 데이터 모델이 깔끔함(전부 user_id). 통합 시 `kadit` 스키마로 옮기고 `kadit_` 접두사 제거 여지 있음.
+- 확인 필요: URL/anon/service 변수명, Auth/콜백.
+
+## 4. locawing (DB 실측 완료 · 코드/ENV 확인 필요)
+
+- project: `nkizvcbesznhvwgskxhy` (ap-northeast-2) · auth users: 1
+- 기존 스키마: `public` 만
+- Storage buckets: **`scenario-exports`, `test-reports`**
+- public 테이블 9개, 분류:
+
+| 분류 | 테이블 |
+|---|---|
+| 사용자 소유(user_id uuid) | `devices`, `scenarios`, `schedules`, `test_reports`, `commands`(user_id+device_id) |
+| 디바이스 스코프(device_id uuid) | `location_logs` |
+| 유저 컬럼 없음 | `blocks`, `profiles`, `scenario_points` |
+
+- 확인 필요: URL/anon/service 변수명, Auth/콜백, `profiles` 의 PK(=auth user 매핑?), `location_logs` 접근 권한 경로(device→user).
+
+---
+
+## 5. 통합 대상 요약
+
+| 앱 | DB 실측 | 대상 스키마(wideget-core) | Storage | 코드/ENV |
+|---|---|---|---|---|
+| Goalivo | ✅ | `goalivo` (생성됨) | 미사용 | 확인+반영 완료 |
+| castfolio | ✅ 21테이블 | `castfolio` (생성됨) | `payment-proof` | 저장소 추가 필요 |
+| kadit | ✅ 9테이블(전부 user_id) | `kadit` (생성됨) | `kadit-images` | 저장소 추가 필요 |
+| locawing | ✅ 9테이블 | `locawing` (생성됨) | `scenario-exports`, `test-reports` | 저장소 추가 필요 |
+| ~~qkiki~~ | 조회 안 함 | (제외) | (제외) | (제외) |
+| ~~one-more-rep~~ | 조회 안 함 | (제외) | (제외) | (제외) |
+
+## 6. 핵심 사실: 각 앱은 서로 다른 auth.users 풀
+
+- castfolio/kadit/locawing 은 **각자 별도 프로젝트의 `auth.users`** 를 갖고 있습니다(user_id UUID 가 프로젝트마다 다름).
+- wideget-core 로 데이터를 실제 이관하려면 **email 기준 사용자 매핑 → user_id 재매핑**이 필수입니다. 이는 파괴적/위험 작업이므로 **자동 실행하지 않고** 사람 결정을 받습니다(`WIDEGET_CORE_MANUAL_ACTIONS.md` E, 본 리포트 결정 항목).
+- 현재 실사용자 수가 적음(castfolio 2, kadit 2, locawing 1)이라 매핑 부담은 작습니다.

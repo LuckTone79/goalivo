@@ -46,6 +46,7 @@ comment on schema locawing  is 'locawing app-private data (unified under wideget
 create or replace function public.wideget_set_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''  -- pin search_path (security: avoids search_path hijacking)
 as $$
 begin
   new.updated_at = now();

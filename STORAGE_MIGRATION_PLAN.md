@@ -2,16 +2,17 @@
 
 > 기존 Storage 파일은 **삭제하지 않습니다.** 아래는 필요 시 **수동 비파괴 이관** 절차입니다.
 
-## 1. 현재 파악된 Storage 사용
+## 1. 현재 파악된 Storage 사용 (Supabase MCP 실측 완료)
 
-| 앱 | Storage bucket | 확인 결과 |
-|---|---|---|
-| Goalivo | ❌ 미사용 | 피드백 이미지는 base64 로 `feedback_posts.images_json` 에 저장(Storage 아님). 이관 불필요. |
-| castfolio | ❓ 확인 필요 | 포트폴리오/미디어 성격상 bucket 사용 가능성 높음 → 저장소 추가 후 조사 |
-| kadit | ❓ 확인 필요 | 저장소 추가 후 조사 |
-| locawing | ❓ 확인 필요 | 저장소 추가 후 조사 |
+| 앱 | project ref | Storage bucket | 이관 필요 |
+|---|---|---|---|
+| Goalivo(wideget-core) | `ossqwphalaxhmadmffsn` | ❌ 없음(base64 저장) | 불필요 |
+| castfolio | `vrbawgqrhigtkyiengkm` | `payment-proof` | 예(결제증빙 → 프라이빗 유지 권장) |
+| kadit | `chkjnszxisljiywjtqve` | `kadit-images` | 예 |
+| locawing | `nkizvcbesznhvwgskxhy` | `scenario-exports`, `test-reports` | 예 |
 
-> castfolio/kadit/locawing 저장소가 이 세션에 없어 실제 bucket 사용 여부를 확인하지 못했습니다.
+> 실제 bucket 존재를 MCP 로 확인했습니다. 파일 내용/용량/객체 수는 이관 실행 단계에서 별도 산출.
+> wideget-core 통합 시 권장 bucket 이름: `castfolio-payment-proof`, `kadit-images`, `locawing-scenario-exports`, `locawing-test-reports`.
 
 ## 2. wideget-core Storage 표준
 

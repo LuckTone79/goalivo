@@ -69,17 +69,30 @@ Supabase Project: wideget-core  (기존 Goalivo project = ref ossqwphalaxhmadmff
 
 > **원칙:** 이번 릴리스는 공통 레지스트리(apps/memberships/profiles)만 추가하는 **비파괴·부가** 변경. 기존 `public.user_state`/`feedback_posts` 는 건드리지 않아 현재 배포가 그대로 동작한다. 스키마 이동은 view/동기화를 통한 무중단 절차(§6)로 후속 진행.
 
-### castfolio / kadit / locawing (확인 필요)
-- 각 앱 저장소를 세션에 추가 후, 현재 테이블 목록을 조사하여 아래 표를 채운다.
+### castfolio / kadit / locawing (DB 실측 완료 · Supabase MCP)
 - 규칙:
   - 사용자 소유 데이터: `<app>.<table>` + `user_id uuid references auth.users(id)` + RLS `auth.uid() = user_id`.
-  - 앱 공유 데이터: `app_id` 사용 + RLS 는 `public.app_memberships` 기반.
+  - 앱 공유/참조 데이터: RLS 는 `public.app_memberships`(app_id) 기반 또는 읽기전용.
 
-| 앱 | 현재 테이블 | 통합 후 위치 | user_id/app_id | 상태 |
-|---|---|---|---|---|
-| castfolio | (확인 필요) | `castfolio.*` | 확인 필요 | 대기 |
-| kadit | (확인 필요) | `kadit.*` | 확인 필요 | 대기 |
-| locawing | (확인 필요) | `locawing.*` | 확인 필요 | 대기 |
+**castfolio** (`vrbawgqrhigtkyiengkm`, 21 tables, 기존 `castfolio` 스키마 존재, bucket `payment-proof`)
+| 분류 | 테이블 → `castfolio.*` | RLS 기준 |
+|---|---|---|
+| user 소유 | battle_votes, box_messages, box_threads(created_by), claim_votes, claims, likes, notifications, score_history, season_results, sp_transactions, unlocks | `auth.uid() = user_id`(또는 created_by) |
+| 앱 공유/참조 | backtest_results, battles, follows, seasons, signal_boxes, strategies, strategy_snapshots, users, verification_queue, weekly_events | membership 기반/공개읽기 (개별 판단) |
+
+**kadit** (`chkjnszxisljiywjtqve`, 9 tables, 전부 `user_id`, bucket `kadit-images`)
+| 분류 | 테이블 → `kadit.*` | RLS 기준 |
+|---|---|---|
+| user 소유(전부) | kadit_artifacts, kadit_generation_schedules, kadit_image_jobs, kadit_render_jobs, kadit_renders, kadit_scheduled_runs, kadit_source_feeds, kadit_source_items, kadit_versions | `auth.uid() = user_id` · `kadit_` 접두사 제거 검토 |
+
+**locawing** (`nkizvcbesznhvwgskxhy`, 9 tables, buckets `scenario-exports`/`test-reports`)
+| 분류 | 테이블 → `locawing.*` | RLS 기준 |
+|---|---|---|
+| user 소유 | devices, scenarios, schedules, test_reports, commands(user_id+device_id) | `auth.uid() = user_id` |
+| device 스코프 | location_logs(device_id) | `device_id ∈ (auth.uid() 소유 devices)` |
+| 유저 컬럼 없음 | blocks, profiles, scenario_points | `profiles.id = auth.uid()` 여부 확인 후 결정 |
+
+> 각 앱 스키마 테이블 생성 migration 은 위 매핑을 근거로 `..._<app>_tables.sql` 로 작성한다(런북 §5). RLS 없는 사용자 데이터 테이블 생성 금지.
 
 ## 4. Auth 사용 분석
 
