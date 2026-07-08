@@ -22,13 +22,13 @@
 | 공통 테이블 | apps, app_memberships, global_profiles ✅ |
 | apps seed | goalivo, castfolio, kadit, locawing (4) ✅ |
 | RLS enabled | 3개 테이블 모두 true, 정책 6개 ✅ |
-| Security Advisor | function 경고 0 (하드닝 후). 잔여 1건은 Auth 설정(아래) |
+| Security Advisor | ERROR 0 / WARN 0 (leaked-password 포함 해소, 2026-07-08). INFO 49건은 미러 테이블 service_role 전용(의도됨) |
 
 ## ⏳ 사람이 직접 해야 하는 것 (대시보드/호스팅)
 
 | # | 작업 | 위치 | 상태 |
 |---|---|---|---|
-| H1 | Leaked Password Protection **켜기** | Auth → Policies/Password | 권장(Advisor WARN) |
+| H1 | Leaked Password Protection **켜기** | Auth → Providers → Email → "Prevent use of leaked passwords" | ✅ 완료(2026-07-08). Advisor WARN 해소 |
 | H2 | Exposed schemas 에 `goalivo/castfolio/kadit/locawing` 추가 여부 결정 | Settings → API | 앱이 `schema()` 접근 시 필요 |
 | H3 | Auth Redirect URLs 등록(실제 도메인) | Auth → URL Config | 도메인 확인 필요 |
 | H4 | 각 앱 호스팅 ENV 를 wideget-core 값으로 등록 | Vercel 등 | castfolio/kadit/locawing 저장소 필요 |
