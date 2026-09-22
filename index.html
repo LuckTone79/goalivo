@@ -4634,14 +4634,16 @@
               <button class="btn btn-sm btn-secondary" id="btnToggleCompletedTasks">완료 보기</button>
             </div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-            <input class="form-input" id="undatedTodoInput" placeholder="예: 우산 사기" style="flex:1;min-width:220px;">
-            <input class="form-input" type="date" id="undatedTodoDate" style="width:auto;min-width:160px;">
-            <button class="btn btn-primary" id="btnAddUndatedTodo">추가</button>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <input class="form-input" id="undatedTodoInput" placeholder="예: 우산 사기" style="flex:1;min-width:0;">
+            <button class="btn btn-primary" id="btnAddUndatedTodo" style="flex-shrink:0;">추가</button>
           </div>
-          <div class="checkbox-wrap" id="undatedTodoNoDateToggle" style="height:38px;display:flex;align-items:center;">
-            <div class="checkbox checked" id="undatedTodoNoDateCheck"></div>
-            <span style="font-size:var(--fs-sm);">날짜 지정 안 함</span>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <input class="form-input" type="date" id="undatedTodoDate" style="width:auto;min-width:140px;">
+            <div class="checkbox-wrap" id="undatedTodoNoDateToggle" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+              <div class="checkbox checked" id="undatedTodoNoDateCheck"></div>
+              <span style="font-size:var(--fs-sm);white-space:nowrap;">날짜 지정 안 함</span>
+            </div>
           </div>
         </div>
         <div class="card">
@@ -4711,6 +4713,9 @@
       let SUPABASE_URL = '';
       let SUPABASE_ANON_KEY = '';
 
+      // wideget-core 통합: 이 앱의 고정 app_id. public.apps / public.app_memberships 와 매칭된다.
+      const WIDEGET_APP_ID = 'goalivo';
+
       let supa = null;
       let currentUser = null;
       const FEEDBACK_ADMIN_EMAIL = 'luck2s7912@gmail.com';
@@ -4720,6 +4725,9 @@
       let suppressAutoCloudSync = false;
       let isSyncingToCloud = false;
       let isSyncingFromCloud = false;
+      let cloudRealtimeChannel = null;
+      let lastSyncedCloudTs = null;
+      let lastCloudSyncAt = null;
       let pendingFeedbackImages = [];
       let visionAiRequestSeq = 0;
       let taskSortSequence = 0;
@@ -4888,7 +4896,59 @@
           if (!currentUser) return;
           if (state.cloudDirty || isSyncingToCloud || isSyncingFromCloud) return;
           syncFromCloud({ silent: true });
-        }, 45000);
+        }, 20000);
+      }
+
+      // 실시간 동기화: 다른 기기가 클라우드를 갱신하면 즉시 내려받는다.
+      function startCloudRealtime() {
+        if (!supa || !currentUser) return;
+        stopCloudRealtime();
+        try {
+          cloudRealtimeChannel = supa
+            .channel('user_state_realtime_' + currentUser.id)
+            .on('postgres_changes', {
+              event: '*',
+              schema: 'public',
+              table: 'user_state',
+              filter: 'user_id=eq.' + currentUser.id
+            }, (payload) => {
+              const newTs = payload && payload.new && payload.new.updated_at;
+              // 내가 방금 올린 변경(에코)은 무시
+              if (newTs && lastSyncedCloudTs && newTs === lastSyncedCloudTs) return;
+              if (state.cloudDirty || isSyncingToCloud || isSyncingFromCloud) return;
+              syncFromCloud({ silent: true });
+            })
+            .subscribe();
+        } catch (e) {
+          console.warn('[Goalivo] Realtime subscribe failed:', e);
+        }
+      }
+
+      function stopCloudRealtime() {
+        if (cloudRealtimeChannel && supa) {
+          try { supa.removeChannel(cloudRealtimeChannel); } catch (e) { }
+        }
+        cloudRealtimeChannel = null;
+      }
+
+      // 수동 전체 동기화: 로컬 변경을 올린 뒤 최신본을 다시 내려받는다.
+      async function manualCloudSync() {
+        if (!supa || !currentUser) { toast('동기화하려면 로그인하세요', 'error'); return; }
+        if (state.cloudDirty) await syncToCloud({ silent: true });
+        await syncFromCloud({ silent: false });
+        if (state.currentPage === 'settings') renderSettings();
+      }
+
+      function formatRelativeTime(date) {
+        if (!date) return '';
+        const sec = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+        if (sec < 10) return '방금 전';
+        if (sec < 60) return sec + '초 전';
+        const min = Math.round(sec / 60);
+        if (min < 60) return min + '분 전';
+        const hr = Math.round(min / 60);
+        if (hr < 24) return hr + '시간 전';
+        return U.formatDate(date);
       }
 
       function stopCloudAutoPull() {
@@ -4904,6 +4964,12 @@
           if (!currentUser) return;
           if (state.cloudDirty || isSyncingToCloud || isSyncingFromCloud) return;
           syncFromCloud({ silent: true });
+        });
+        window.addEventListener('online', () => {
+          if (!currentUser) return;
+          // 재접속 시: 보류 중인 로컬 변경은 올리고, 아니면 최신본을 받는다.
+          if (state.cloudDirty) scheduleCloudSync(200);
+          else if (!isSyncingToCloud && !isSyncingFromCloud) syncFromCloud({ silent: true });
         });
       }
 
@@ -4959,6 +5025,7 @@
           const { data: { session } } = await supa.auth.getSession();
           if (session) {
             currentUser = session.user;
+            ensureWidegetMembership();
             if (session.provider_token) {
               persistGcalToken(session.provider_token);
             } else if (restoreGcalToken()) {
@@ -4966,6 +5033,8 @@
             }
             await syncFromCloud({ silent: true });
             startCloudAutoPull();
+            startCloudRealtime();
+            scheduleAutoFetchGoogleCalendar(900);
           }
 
           supa.auth.onAuthStateChange(async (event, session) => {
@@ -4979,13 +5048,18 @@
               state.gcalConnected = true;
             }
             if (currentUser) {
+              ensureWidegetMembership();
               await syncFromCloud({ silent: true });
               startCloudAutoPull();
+              startCloudRealtime();
               if (event !== 'INITIAL_SESSION') {
                 scheduleAutoFetchGoogleCalendar(900, { recoverToken: true });
+              } else {
+                scheduleAutoFetchGoogleCalendar(900);
               }
             } else {
               stopCloudAutoPull();
+              stopCloudRealtime();
             }
             updateAuthUI();
           });
@@ -4994,6 +5068,29 @@
         } catch (e) {
           console.warn('[Goalivo] Auth init error:', e);
         }
+      }
+
+      // wideget-core 통합: 로그인 후 공통 레지스트리에 프로필/멤버십을 보장한다.
+      // 통합 마이그레이션 적용 이전에는 테이블이 없을 수 있으므로 모든 오류를 조용히 무시한다.
+      // 권한 승격(role/status)은 RLS로 차단되어 있으며 service_role 서버에서만 가능하다.
+      async function ensureWidegetMembership() {
+        if (!supa || !currentUser) return;
+        const meta = currentUser.user_metadata || {};
+        try {
+          // 공통 프로필: 없으면 생성, 있으면 그대로 둔다(사용자 편집 값 보존).
+          await supa.from('global_profiles').upsert({
+            user_id: currentUser.id,
+            display_name: meta.full_name || meta.name || currentUser.email || null,
+            avatar_url: meta.avatar_url || meta.picture || null
+          }, { onConflict: 'user_id', ignoreDuplicates: true });
+        } catch (e) { /* global_profiles 미존재/마이그레이션 이전 상태 호환 */ }
+        try {
+          // 앱 멤버십: goalivo 앱에 최초 가입 시 1행 생성(role='user', status='active' 기본값).
+          await supa.from('app_memberships').upsert({
+            app_id: WIDEGET_APP_ID,
+            user_id: currentUser.id
+          }, { onConflict: 'app_id,user_id', ignoreDuplicates: true });
+        } catch (e) { /* app_memberships 미존재/마이그레이션 이전 상태 호환 */ }
       }
 
       function updateAuthUI() {
@@ -5079,6 +5176,7 @@
         await supa.auth.signOut();
         currentUser = null;
         stopCloudAutoPull();
+        stopCloudRealtime();
         persistGcalToken(null);
         await db.externalEvents.clear();
         state.externalEvents = [];
@@ -7824,6 +7922,7 @@
 
       function persistUndatedTodos() {
         localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos || []));
+        markCloudDirty();
       }
 
       function setUndatedTodos(nextTodos) {
@@ -7848,6 +7947,7 @@
             done: false,
             priority: null,
             manualSortOrder: allocateTaskSortOrder(),
+            memo: '',
             createdAt: new Date().toISOString()
           }, ...(state.undatedTodos || [])]);
         } else {
@@ -7954,6 +8054,94 @@
         renderAll();
       }
 
+      function openUndatedTodoDetail(todoId) {
+        const todo = (state.undatedTodos || []).find(t => t.id === todoId);
+        if (!todo) return;
+        state.rightPanelReturnContext = 'taskList';
+        const priorityLabels = { high: '높음', medium: '보통', low: '낮음', none: '없음' };
+        const priorityColors = { high: '#ef4444', medium: '#f59e0b', low: '#3b82f6', none: 'var(--c-text-muted)' };
+        const curPriority = todo.priority || 'none';
+
+        document.getElementById('rightPanelTitle').textContent = '할일 상세';
+        document.getElementById('rightPanelContent').innerHTML = `
+      <div class="detail-card">
+        <div class="detail-card-header">
+          <div class="detail-title-wrap">
+            <div class="detail-title">${U.esc(todo.title)}</div>
+            <div class="detail-chip-row">
+              <span class="detail-chip">${todo.done ? '✅ 완료' : '⬜ 미완료'}</span>
+              <span class="detail-chip" style="color:${priorityColors[curPriority]};">⚡ 우선순위: ${priorityLabels[curPriority]}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-section-title">할일 수정</div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">제목</label>
+          <input class="form-input" id="undatedTodoEditTitle" value="${U.esc(todo.title)}" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">메모</label>
+          <textarea class="form-input" id="undatedTodoEditMemo" rows="3" style="width:100%;resize:vertical;">${U.esc(todo.memo || '')}</textarea>
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">우선순위</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="undatedTodoPriorityGroup">
+            ${['high', 'medium', 'low', 'none'].map(p => `
+              <button class="btn btn-sm ${curPriority === p ? 'btn-primary' : 'btn-secondary'}" data-priority="${p}" onclick="Goalivo.setUndatedTodoPriority(${todo.id},'${p}')" style="${curPriority === p ? `background:${priorityColors[p]};border-color:${priorityColors[p]};color:#fff;` : ''}">${priorityLabels[p]}</button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-section-title">작업</div>
+        <div class="detail-actions">
+          <button class="btn btn-primary" onclick="Goalivo.saveUndatedTodoDetail(${todo.id})">저장</button>
+          <button class="btn ${todo.done ? 'btn-secondary' : 'btn-primary'}" style="${todo.done ? 'background:var(--c-completed);color:#fff;border-color:var(--c-completed);' : ''}" onclick="Goalivo.toggleUndatedTodo(${todo.id});Goalivo.openUndatedTodoDetail(${todo.id});">${todo.done ? '완료 표시 중' : '완료됨으로 표시'}</button>
+          <button class="btn btn-danger" onclick="if(confirm('삭제하시겠습니까?')){Goalivo.deleteUndatedTodo(${todo.id});Goalivo.closeRightPanelToPrevious();}">삭제</button>
+        </div>
+      </div>
+    `;
+        const rp = document.getElementById('rightPanel');
+        rp.classList.add('active');
+        openMobilePanel('right');
+      }
+
+      function setUndatedTodoPriority(todoId, priority) {
+        const todo = (state.undatedTodos || []).find(t => t.id === todoId);
+        if (!todo) return;
+        todo.priority = priority;
+        persistUndatedTodos();
+        openUndatedTodoDetail(todoId);
+      }
+
+      function saveUndatedTodoDetail(todoId) {
+        const todo = (state.undatedTodos || []).find(t => t.id === todoId);
+        if (!todo) return;
+        const titleEl = document.getElementById('undatedTodoEditTitle');
+        const memoEl = document.getElementById('undatedTodoEditMemo');
+        const newTitle = String(titleEl?.value || '').trim();
+        if (!newTitle) { toast('제목을 입력하세요', 'error'); return; }
+        todo.title = newTitle;
+        todo.memo = String(memoEl?.value || '');
+        persistUndatedTodos();
+        renderTaskListModal();
+        openUndatedTodoDetail(todoId);
+        toast('저장되었습니다', 'success');
+      }
+
+      function moveUndatedTodo(todoId, direction) {
+        const todos = state.undatedTodos || [];
+        const idx = todos.findIndex(t => t.id === todoId);
+        if (idx < 0) return;
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= todos.length) return;
+        [todos[idx], todos[targetIdx]] = [todos[targetIdx], todos[idx]];
+        persistUndatedTodos();
+        renderTaskListModal();
+      }
+
       function toggleCompletedTaskList() {
         state.taskListShowCompleted = !state.taskListShowCompleted;
         renderTaskListModal();
@@ -8025,7 +8213,7 @@
         if (incompleteUndated.length > 0) {
           html += `<div style="font-size:var(--fs-sm);font-weight:700;margin:8px 0 6px;">날짜 미정</div>`;
           html += incompleteUndated.map((todo, idx) => `
-            <div class="task-item" style="margin-bottom:6px;">
+            <div class="task-item" style="margin-bottom:6px;cursor:pointer;" onclick="Goalivo.openUndatedTodoDetail(${todo.id});Goalivo.closeModal('taskListModal');">
               <div class="checkbox" onclick="event.stopPropagation();Goalivo.toggleUndatedTodo(${todo.id})"></div>
               <div style="flex:1;min-width:0;">
                 <div class="task-item-text">${U.esc(todo.title)}</div>
@@ -8083,7 +8271,7 @@
             if (completeUndated.length > 0) {
               html += `<div style="font-size:var(--fs-sm);font-weight:700;margin:8px 0 6px;">날짜 미정</div>`;
               html += completeUndated.map((todo, idx) => `
-                <div class="task-item" style="margin-bottom:6px;">
+                <div class="task-item" style="margin-bottom:6px;cursor:pointer;" onclick="Goalivo.openUndatedTodoDetail(${todo.id});Goalivo.closeModal('taskListModal');">
                   <div class="checkbox checked" onclick="event.stopPropagation();Goalivo.toggleUndatedTodo(${todo.id})"></div>
                   <div style="flex:1;min-width:0;">
                     <div class="task-item-text done">${U.esc(todo.title)}</div>
@@ -8248,7 +8436,7 @@
         requestAnimationFrame(() => input?.focus());
       }
 
-      function renderDdayModal() {
+      function renderDdayModal(editingId = null) {
         const body = document.getElementById('ddayModalBody');
         if (!body) return;
         ensureDdayItems();
@@ -8256,6 +8444,8 @@
         const todayStr = U.formatDate(U.today());
         const editingItem = activeDdayEditId ? getDdayItemById(activeDdayEditId) : null;
         const actionLabel = editingItem ? '수정 저장' : '추가';
+
+        const COLOR_OPTIONS = ['#8A92D8','#ef4444','#f59e0b','#22c55e','#3b82f6','#a855f7','#ec4899','#14b8a6'];
 
         body.innerHTML = `
           <div style="display:grid;grid-template-columns:1fr 130px auto;gap:8px;align-items:end;margin-bottom:12px;">
@@ -8382,6 +8572,13 @@
         const statusLabel = done ? '완료' : '진행 중';
         const statusColor = done ? 'var(--c-completed)' : 'var(--c-in-progress)';
         const priorityLabel = getTaskPriorityLabel(task.priority);
+        const priorityLabels = { high: '높음', medium: '보통', low: '낮음', none: '없음' };
+        const priorityColors = { high: '#ef4444', medium: '#f59e0b', low: '#3b82f6', none: 'var(--c-text-muted)' };
+        const curPriority = task.priority || 'none';
+
+        const goalOptions = state.goals.filter(g => g.status !== 'completed').map(g =>
+          `<option value="${g.id}" ${task.goalId === g.id ? 'selected' : ''}>${U.esc(g.name)}</option>`
+        ).join('');
 
         document.getElementById('rightPanelTitle').textContent = '할 일 상세';
         document.getElementById('rightPanelContent').innerHTML = `
@@ -8393,24 +8590,49 @@
             <div class="detail-chip-row">
               <span class="detail-chip">✅ 할 일</span>
               <span class="detail-chip"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor};"></span> ${statusLabel}</span>
-              <span class="detail-chip">${priorityLabel}</span>
+              ${curPriority !== 'none' ? `<span class="detail-chip" style="color:${priorityColors[curPriority]};">⚡ ${priorityLabels[curPriority]}</span>` : ''}
               ${goal ? `<span class="detail-chip"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${goal.color};"></span> ${U.esc(goal.name)}</span>` : `<span class="detail-chip">미분류</span>`}
             </div>
           </div>
         </div>
       </div>
       <div class="detail-card">
-        <div class="detail-section-title">기본 정보</div>
-        <div class="detail-kv"><div class="k">날짜</div><div class="v">${task.date}</div></div>
-        <div class="detail-kv"><div class="k">예상 시간</div><div class="v">${plannedMinutes}분</div></div>
-        <div class="detail-kv"><div class="k">상태</div><div class="v">${statusLabel}</div></div>
-        <div class="detail-kv"><div class="k">우선순위</div><div class="v">${priorityLabel}</div></div>
+        <div class="detail-section-title">할일 수정</div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">제목</label>
+          <input class="form-input" id="taskEditTitle" value="${U.esc(task.title || '')}" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">날짜</label>
+          <input class="form-input" type="date" id="taskEditDate" value="${task.date}" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">예상 시간 (분)</label>
+          <input class="form-input" type="number" id="taskEditMinutes" value="${plannedMinutes}" min="0" style="width:100%;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">목표</label>
+          <select class="form-input" id="taskEditGoal" style="width:100%;">
+            <option value="">미분류</option>
+            ${goalOptions}
+          </select>
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:var(--fs-xs);font-weight:600;display:block;margin-bottom:4px;">우선순위</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="taskPriorityGroup">
+            ${['high', 'medium', 'low', 'none'].map(p => `
+              <button class="btn btn-sm ${curPriority === p ? 'btn-primary' : 'btn-secondary'}" data-priority="${p}" onclick="Goalivo.setTaskPriority(${task.id},'${p}')" style="${curPriority === p ? `background:${priorityColors[p]};border-color:${priorityColors[p]};color:#fff;` : ''}">${priorityLabels[p]}</button>
+            `).join('')}
+          </div>
+        </div>
       </div>
       <div class="detail-card">
         <div class="detail-section-title">작업</div>
         <div class="detail-actions">
+          <button class="btn btn-primary" onclick="Goalivo.saveTaskDetail(${task.id})">저장</button>
           <button class="btn ${done ? 'btn-secondary' : 'btn-primary'}" style="${done ? 'background:var(--c-completed);color:#fff;border-color:var(--c-completed);' : ''}" onclick="Goalivo.toggleTask(${task.id}, { keepDetail: true })">${done ? '완료 표시 중' : '완료됨으로 표시'}</button>
           <button class="btn btn-secondary" onclick="Goalivo.viewDayDetail('${task.date}')">해당 일 보기</button>
+          <button class="btn btn-danger" onclick="if(confirm('이 할일을 삭제하시겠습니까?')){Goalivo.deleteTask(${task.id});}">삭제</button>
         </div>
       </div>
     `;
@@ -8486,6 +8708,53 @@
         renderAll();
         if (options.keepDetail) openTaskDetail(taskId);
         toast(newStatus === 'completed' ? '완료!' : '미완료로 변경', 'success');
+      }
+
+      async function saveTaskDetail(taskId) {
+        const task = state.taskInstances.find(t => t.id === taskId);
+        if (!task) return;
+        const titleEl = document.getElementById('taskEditTitle');
+        const dateEl = document.getElementById('taskEditDate');
+        const minutesEl = document.getElementById('taskEditMinutes');
+        const goalEl = document.getElementById('taskEditGoal');
+        const newTitle = String(titleEl?.value || '').trim();
+        if (!newTitle) { toast('제목을 입력하세요', 'error'); return; }
+        const newDate = dateEl?.value || task.date;
+        const newMinutes = parseInt(minutesEl?.value || '0', 10) || 0;
+        const newGoalId = goalEl?.value ? parseInt(goalEl.value, 10) : null;
+        await db.taskInstances.update(taskId, {
+          title: newTitle,
+          date: newDate,
+          plannedMinutes: newMinutes,
+          goalId: newGoalId
+        });
+        await loadGoals();
+        renderAll();
+        openTaskDetail(taskId);
+        toast('저장되었습니다', 'success');
+      }
+
+      async function setTaskPriority(taskId, priority) {
+        const task = state.taskInstances.find(t => t.id === taskId);
+        if (!task) return;
+        await db.taskInstances.update(taskId, { priority });
+        await loadGoals();
+        renderAll();
+        openTaskDetail(taskId);
+      }
+
+      async function deleteTask(taskId) {
+        const task = state.taskInstances.find(t => t.id === taskId);
+        if (!task) return;
+        const logs = state.executionLogs.filter(l => l.taskId === taskId);
+        if (logs.length > 0) {
+          await db.executionLogs.bulkDelete(logs.map(l => l.id));
+        }
+        await db.taskInstances.delete(taskId);
+        await loadGoals();
+        renderAll();
+        closeRightPanelToPrevious();
+        toast('삭제되었습니다', 'success');
       }
 
       /* ============================================================
@@ -11855,11 +12124,12 @@
           <div style="font-size:var(--fs-sm);font-weight:700;margin-bottom:10px;">${editingRoutine ? '루틴 수정' : '루틴 추가'}</div>
           <div style="display:grid;grid-template-columns:1fr;gap:8px;">
             <input id="routineTitleInput" class="form-input" placeholder="예: 20분 독서, 영어 단어 30개" value="${U.esc(editingRoutine?.title || '')}">
-            <div style="display:flex;gap:6px;flex-wrap:wrap;" id="routineDayChooser">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;" id="routineDayChooser">
               ${[0, 1, 2, 3, 4, 5, 6].map(d => {
                 const active = !!(editingRoutine && Array.isArray(editingRoutine.days) && editingRoutine.days.includes(d));
                 return `<button type="button" class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}" data-routine-day="${d}">${getWeekdayShortLabel(d)}</button>`;
               }).join('')}
+              <button type="button" class="btn btn-sm btn-secondary" onclick="Goalivo.setRoutineDaysAll()" style="margin-left:4px;font-weight:700;">매일</button>
             </div>
             <div>
               <div style="font-size:11px;color:var(--c-text-muted);margin-bottom:4px;">루틴 팝업 시간</div>
@@ -11874,7 +12144,6 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-primary" onclick="Goalivo.${editingRoutine ? 'saveRoutineEdit()' : 'addRoutine()'}">${editingRoutine ? '수정 저장' : '루틴 추가'}</button>
               ${editingRoutine ? '<button class="btn btn-secondary" onclick="Goalivo.cancelRoutineEdit()">수정 취소</button>' : ''}
-              <button class="btn btn-secondary" onclick="Goalivo.setRoutineDaysAll()">매일 선택</button>
               <button class="btn btn-secondary" onclick="Goalivo.clearRoutineDaySelection()">요일 초기화</button>
             </div>
           </div>
@@ -13806,18 +14075,25 @@
         html += `<div class="settings-section">
       <div class="settings-section-title">👤 ${t('settings_account')}</div>`;
         if (currentUser) {
+          const lastSyncText = lastCloudSyncAt ? ('마지막 동기화: ' + formatRelativeTime(lastCloudSyncAt)) : '동기화 대기 중…';
           html += `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--c-surface-alt);border-radius:var(--radius);border:1px solid var(--c-border);">
-          <div>
-            <div style="font-weight:600;font-size:var(--fs-sm);">${U.esc(currentUser.email)}</div>
-            <div style="font-size:10px;color:var(--c-text-muted);margin-top:2px;">${t('account_logged_in')}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--c-surface-alt);border-radius:var(--radius);border:1px solid var(--c-border);gap:8px;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;">${U.esc(currentUser.email)}</div>
+            <div style="font-size:10px;color:var(--c-text-muted);margin-top:2px;">${t('account_logged_in')} · ${U.esc(lastSyncText)}</div>
           </div>
           <button class="btn btn-secondary" style="font-size:var(--fs-xs);padding:6px 14px;" onclick="Goalivo.logout()">${t('account_logout')}</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+          <button class="btn btn-primary" style="font-size:var(--fs-xs);padding:8px 14px;flex:1;" onclick="Goalivo.manualCloudSync()">🔄 지금 동기화</button>
+        </div>
+        <div style="font-size:11px;color:var(--c-text-muted);margin-top:8px;line-height:1.5;">
+          💡 모든 기기(PC·모바일)에서 <b>위와 똑같은 이메일 계정</b>으로 로그인해야 할일이 실시간으로 동기화됩니다. 다른 계정으로 로그인하면 서로 데이터가 보이지 않습니다.
         </div>`;
         } else {
           html += `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--c-surface-alt);border-radius:var(--radius);border:1px solid var(--c-border);">
-          <div style="font-size:var(--fs-sm);color:var(--c-text-muted);">${t('account_sync_msg')}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--c-warning-bg, #fff7ed);border-radius:var(--radius);border:1px solid var(--c-warning, #f59e0b);gap:8px;">
+          <div style="font-size:var(--fs-sm);color:var(--c-text);">⚠ 로그인하지 않으면 이 기기에만 저장되어 <b>다른 기기와 동기화되지 않습니다.</b></div>
           <button class="btn btn-primary" style="font-size:var(--fs-xs);padding:6px 14px;white-space:nowrap;" onclick="Goalivo.openModal('authModal')">${t('account_login')}</button>
         </div>`;
         }
@@ -15749,6 +16025,7 @@ ${checkinLine}
           goalProfiles: await db.goalProfiles.toArray(),
           aiReports: db.aiReports ? await db.aiReports.toArray() : [],
           reviewCheckpoints: await db.reviewCheckpoints.toArray(),
+          undatedTodos: state.undatedTodos || [],
           settings: getCloudSafeSettings(),
           exportedAt: new Date().toISOString()
         };
@@ -15780,6 +16057,10 @@ ${checkinLine}
           if (data.goalProfiles) { await db.goalProfiles.clear(); await db.goalProfiles.bulkAdd(data.goalProfiles); }
           if (data.aiReports && db.aiReports) { await db.aiReports.clear(); await db.aiReports.bulkAdd(data.aiReports); }
           if (data.reviewCheckpoints) { await db.reviewCheckpoints.clear(); await db.reviewCheckpoints.bulkAdd(data.reviewCheckpoints); }
+          if (Array.isArray(data.undatedTodos)) {
+            state.undatedTodos = data.undatedTodos;
+            localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos));
+          }
           if (data.settings) {
             const importedSettings = { ...data.settings };
             delete importedSettings.gcalToken;
@@ -15821,14 +16102,18 @@ ${checkinLine}
             aiReports: db.aiReports ? await db.aiReports.toArray() : [],
             reviewCheckpoints: await db.reviewCheckpoints.toArray(),
             externalEvents: await db.externalEvents.toArray(),
+            undatedTodos: state.undatedTodos || [],
             settings: getCloudSafeSettings(),
             exportedAt: new Date().toISOString()
           };
-          const { error } = await supa.from('user_state').upsert({
+          const { data: saved, error } = await supa.from('user_state').upsert({
             user_id: currentUser.id,
             state_data: data
-          });
+          }).select('updated_at').single();
           if (error) throw error;
+          // 실시간 에코 방지: 방금 올린 변경의 타임스탬프를 기억한다.
+          if (saved && saved.updated_at) lastSyncedCloudTs = saved.updated_at;
+          lastCloudSyncAt = new Date();
           state.cloudDirty = false;
           if (!silent) toast('☁ 클라우드 버전에 저장되었습니다', 'success');
         } catch (e) {
@@ -15849,11 +16134,12 @@ ${checkinLine}
         if (syncBtn) syncBtn.style.stroke = 'var(--c-in-progress)';
         try {
           const { data, error } = await supa.from('user_state')
-            .select('state_data')
+            .select('state_data, updated_at')
             .eq('user_id', currentUser.id)
             .single();
 
           if (error && error.code !== 'PGRST116') throw error;
+          if (data && data.updated_at) lastSyncedCloudTs = data.updated_at;
           const [localGoals, localMilestones, localTimeBlocks, localTaskInstances, localExecutionLogs, localTemplates, localGoalProfiles, localAiReports, localReviewCheckpoints, localExternalEvents] = await Promise.all([
             db.goals.toArray(),
             db.milestones.toArray(),
@@ -15876,7 +16162,8 @@ ${checkinLine}
             goalProfiles: localGoalProfiles.length,
             aiReports: localAiReports.length,
             reviewCheckpoints: localReviewCheckpoints.length,
-            externalEvents: localExternalEvents.length
+            externalEvents: localExternalEvents.length,
+            undatedTodos: Array.isArray(state.undatedTodos) ? state.undatedTodos.length : 0
           };
           const localTotal = Object.values(localCounts).reduce((s, n) => s + (n || 0), 0);
 
@@ -15900,7 +16187,8 @@ ${checkinLine}
             goalProfiles: Array.isArray(cloudData.goalProfiles) ? cloudData.goalProfiles.length : -1,
             aiReports: Array.isArray(cloudData.aiReports) ? cloudData.aiReports.length : -1,
             reviewCheckpoints: Array.isArray(cloudData.reviewCheckpoints) ? cloudData.reviewCheckpoints.length : -1,
-            externalEvents: Array.isArray(cloudData.externalEvents) ? cloudData.externalEvents.length : -1
+            externalEvents: Array.isArray(cloudData.externalEvents) ? cloudData.externalEvents.length : -1,
+            undatedTodos: Array.isArray(cloudData.undatedTodos) ? cloudData.undatedTodos.length : -1
           };
           const cloudKnownTotal = Object.values(cloudCounts).filter(n => n >= 0).reduce((s, n) => s + n, 0);
           if (cloudKnownTotal === 0 && localTotal > 0) {
@@ -15953,6 +16241,13 @@ ${checkinLine}
             if (cloudData.externalEvents.length === 0 && localCounts.externalEvents > 0) protectedTables.push('externalEvents');
             else { await db.externalEvents.clear(); if (cloudData.externalEvents.length > 0) await db.externalEvents.bulkAdd(cloudData.externalEvents); }
           }
+          if (Array.isArray(cloudData.undatedTodos)) {
+            if (cloudData.undatedTodos.length === 0 && localCounts.undatedTodos > 0) protectedTables.push('undatedTodos');
+            else {
+              state.undatedTodos = cloudData.undatedTodos;
+              localStorage.setItem('goalivo_undated_todos', JSON.stringify(state.undatedTodos));
+            }
+          }
 
           if (protectedTables.length > 0) {
             state.cloudDirty = true;
@@ -15971,6 +16266,7 @@ ${checkinLine}
           await loadGoals();
           renderAll();
           state.cloudDirty = false;
+          lastCloudSyncAt = new Date();
           if (!silent) toast('☁ 다른 기기의 데이터를 불러왔습니다', 'success');
         } catch (e) {
           console.error(e);
@@ -16611,6 +16907,9 @@ ${checkinLine}
         deleteBlock,
         quickAddBlock,
         toggleTask,
+        saveTaskDetail,
+        setTaskPriority,
+        deleteTask,
         toggleTodayTodoOnly,
         openTaskListModal,
         openDdayModal,
@@ -16618,11 +16917,20 @@ ${checkinLine}
         startDdayEdit,
         cancelDdayEdit,
         deleteDdayItem,
+        editDdayItem,
+        saveDdayItem,
+        selectDdayColor,
+        renderDdayModal,
         addUndatedTodo,
         toggleUndatedTodo,
         deleteUndatedTodo,
         setTaskListPriority,
         moveTaskListItem,
+        openUndatedTodoDetail,
+        saveUndatedTodoDetail,
+        setUndatedTodoPriority,
+        moveUndatedTodo,
+        closeRightPanelToPrevious,
         openSearchModal,
         runSearch,
         openTaskDetail,
@@ -16722,6 +17030,9 @@ ${checkinLine}
         signupWithEmail,
         loginWithGoogle,
         logout,
+        manualCloudSync,
+        syncToCloud,
+        syncFromCloud,
         // Expose state for debugging
         get state() { return state; },
         get db() { return db; }
