@@ -121,7 +121,7 @@
       db.from('friendships').select('user_a').eq('user_b', id),
       db.from('friend_requests').select('*').or('sender_id.eq.' + id + ',receiver_id.eq.' + id).order('created_at', { ascending: false }),
       db.from('group_invitations').select('*, groups(*)').eq('invitee_id', id).eq('status', 'pending').order('created_at', { ascending: false }),
-      db.from('shared_events').select('*, event_shares(*)').order('start_at', { ascending: true }).limit(200)
+      db.rpc('get_shared_event_feed')
     ]);
     var failure = results.find(function (item) { return item.error; });
     if (failure) throw failure.error;
@@ -138,7 +138,10 @@
     var friendProfiles = friendIds.length ? await db.from('profiles').select('user_id,nickname,friend_code').in('user_id', friendIds) : { data: [], error: null };
     if (friendProfiles.error) throw friendProfiles.error;
     SC.friends = friendProfiles.data || [];
-    SC.requests = results[4].data || []; SC.invitations = results[5].data || []; SC.sharedEvents = results[6].data || [];
+    SC.requests = results[4].data || []; SC.invitations = results[5].data || [];
+    SC.sharedEvents = (results[6].data || []).sort(function (a, b) {
+      return String(a.start_at || a.start_date || '').localeCompare(String(b.start_at || b.start_date || ''));
+    });
   }
   async function task(action, message) {
     SC.busy = true;
@@ -303,7 +306,7 @@
       saveLocal({ sharedEvents: local.sharedEvents }); return;
     }
     for (var i = 0; i < events.length; i++) {
-      var event = events[i], upsert = await SC.client.from('shared_events').upsert({ owner_user_id: SC.user.id, source_kind: event.source_kind, source_ref: event.source_ref, title: event.title, start_at: event.start_at, end_at: event.end_at, start_date: event.start_date, end_date: event.end_date, is_all_day: event.is_all_day, timezone: event.timezone, memo: event.memo || '', status: 'active' }, { onConflict: 'owner_user_id,source_kind,source_ref' }).select().single();
+      var event = events[i], upsert = await SC.client.from('shared_events').upsert({ owner_user_id: SC.user.id, source_kind: event.source_kind, source_ref: event.source_ref, title: event.title, start_at: event.start_at, end_at: event.end_at, start_date: event.start_date, end_date: event.end_date, is_all_day: event.is_all_day, timezone: event.timezone, memo: event.memo || '', status: 'active' }, { onConflict: 'owner_user_id,source_kind,source_ref' }).select('id,owner_user_id,source_kind,source_ref,start_at,end_at,start_date,end_date,is_all_day,timezone,status,version,created_at,updated_at').single();
       if (upsert.error) throw upsert.error;
       for (var j = 0; j < targets.length; j++) {
         var target = targets[j], query = SC.client.from('event_shares').select('id').eq('event_id', upsert.data.id).eq('status', 'active');
