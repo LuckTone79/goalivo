@@ -4423,6 +4423,8 @@
             </svg>
             Google로 로그인
           </button>
+          <button class="btn btn-link" type="button" style="width:100%;margin-top:10px;"
+            onclick="Goalivo.sendPasswordReset()">비밀번호 재설정</button>
         </div>
 
         <!-- Signup form -->
@@ -4944,7 +4946,9 @@
             SUPABASE_ANON_KEY = config.supabaseAnonKey;
           }
           if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && window.supabase.createClient) {
-            supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+              db: { schema: 'goalivo' }
+            });
           }
         } catch (e) {
           console.warn('[Goalivo] Config fetch error:', e);
@@ -4966,6 +4970,9 @@
 
           supa.auth.onAuthStateChange(async (event, session) => {
             currentUser = session?.user || null;
+            if (event === 'PASSWORD_RECOVERY') {
+              await completePasswordRecovery();
+            }
             if (session?.provider_token) {
               persistGcalToken(session.provider_token);
             } else if (currentUser && restoreGcalToken()) {
@@ -5281,7 +5288,7 @@
         }
       };
       const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0));
-      const APP_VERSION = 'v2026.06.19-02';
+      const APP_VERSION = 'v2026.09.22-01';
       let mobileFocusedInput = null;
       let mobileInputBarHideTimer = null;
       let viewportLockScrollY = 0;
@@ -5337,6 +5344,28 @@
 
       function ensureDdayItems() {
         state.settings.ddayItems = normalizeDdayItems(state.settings.ddayItems || []);
+      }
+
+      async function sendPasswordReset() {
+        if (!supa) { toast('인증 서비스를 사용할 수 없습니다', 'error'); return; }
+        const email = document.getElementById('authLoginEmail')?.value.trim();
+        if (!email) { toast('이메일을 먼저 입력하세요', 'warning'); return; }
+        const { error } = await supa.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + window.location.pathname
+        });
+        if (error) { toast('재설정 메일 발송 실패: ' + error.message, 'error'); return; }
+        toast('비밀번호 재설정 메일을 발송했습니다', 'success');
+      }
+
+      async function completePasswordRecovery() {
+        const password = window.prompt('새 비밀번호를 입력하세요 (8자 이상)');
+        if (!password) return;
+        if (password.length < 8) { toast('비밀번호는 8자 이상이어야 합니다', 'error'); return; }
+        const confirm = window.prompt('새 비밀번호를 다시 입력하세요');
+        if (password !== confirm) { toast('비밀번호가 일치하지 않습니다', 'error'); return; }
+        const { error } = await supa.auth.updateUser({ password });
+        if (error) { toast('비밀번호 변경 실패: ' + error.message, 'error'); return; }
+        toast('비밀번호가 변경되었습니다', 'success');
       }
 
       function getDdayItemById(id) {
@@ -16689,6 +16718,7 @@ ${checkinLine}
         switchAuthTab,
         setLanguage,
         loginWithEmail,
+        sendPasswordReset,
         signupWithEmail,
         loginWithGoogle,
         logout,
@@ -16702,7 +16732,7 @@ ${checkinLine}
     // Boot — safe init with error boundary
     document.addEventListener('DOMContentLoaded', () => {
       if (typeof Goalivo !== 'undefined' && Goalivo.init) {
-        Goalivo.init().catch(e => console.error('[Goalivo] Init failed:', e));
+        Goalivo.init().then(() => window.dispatchEvent(new CustomEvent('goalivo:ready'))).catch(e => console.error('[Goalivo] Init failed:', e));
       } else {
         console.error('[Goalivo] Module failed to load. Check script dependencies.');
         document.getElementById('centerContent').innerHTML =
@@ -16710,6 +16740,7 @@ ${checkinLine}
       }
     });
   </script>
+  <script src="/shared-calendar.js"></script>
 </body>
 
 </html>
