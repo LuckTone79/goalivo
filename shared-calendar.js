@@ -1,6 +1,7 @@
 (function () {
   'use strict';
   var KEY = 'goalivo_shared_calendar_v1';
+  var SHARED_EVENT_RETURN_COLUMNS = 'id';
   var SC = {
     client: null, user: null, profile: null, local: true, groups: [], friends: [],
     requests: [], invitations: [], sharedEvents: [], memberships: [], tab: 'groups',
@@ -10,7 +11,7 @@
   function esc(value) {
     var node = document.createElement('div');
     node.textContent = value == null ? '' : String(value);
-    return node.innerHTML.replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
+    return node.innerHTML.replace(/\x22/g, '&quot;').replace(/'/g, '&#39;');
   }
   function uid() {
     return window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
@@ -373,7 +374,7 @@
   function modalHtml(event, presetGroup) {
     var events = event ? [event] : sortEvents(sourceEvents()), targets = targetList();
     var html = `<div class='shared-modal-overlay' id='sharedShareModal'><div class='shared-modal'><div class='shared-card-heading'><div><h2>${event ? '이 일정을 공유' : '그룹에 일정 추가'}</h2><p>${event ? esc(event.title + ' · ' + eventDate(event)) : '일정을 탭해서 한 번에 공유하세요'}</p></div><button class='shared-icon-btn' onclick='SharedCalendar.closeModal()'>×</button></div>`;
-    if (!targets.length) html += '<div class=\'shared-empty\'>먼저 친구를 연결하거나 그룹을 만들어 주세요.</div>';
+    if (!targets.length) html += `<div class='shared-empty'>먼저 친구를 연결하거나 그룹을 만들어 주세요.</div>`;
     else html += `<div class='shared-share-targets'>${targets.map(function (target) { return `<label class='shared-target-row'><input type='checkbox' data-target-type='${target.type}' data-target-id='${esc(target.id)}'${presetGroup === target.id ? ' checked' : ''}><span>${esc(target.label)}</span></label>`; }).join('')}</div>`;
     if (!event) html += `<div class='shared-selection-tip'>탭한 일정만 선택됩니다. 이미 공유한 원본은 공유 관리에서 수정하세요.</div><div class='shared-event-picker'>${events.map(function (item) { return eventRow(item, false); }).join('')}</div>`;
     html += `<div class='shared-access-box'><label>공개 수준</label><select id='sharedAccessSelect' class='shared-input'><option value='title_time'>제목·시간 공개</option><option value='time_only'>시간만 공개</option><option value='selected_details'>선택한 상세정보</option></select><small>장소·메모·링크는 자동 공개하지 않습니다.</small></div><div class='shared-modal-actions'><button class='shared-secondary' onclick='SharedCalendar.closeModal()'>취소</button><button class='shared-primary' onclick='SharedCalendar.confirmShare(&quot;${esc(event ? (event.source_ref || event.id) : '')}&quot;)'>공유하기</button></div></div></div>`;
@@ -409,12 +410,54 @@
     closeModal();
     await task(function () { return shareEvents(events, targets, access); }, events.length + '개 일정의 공유를 저장했습니다');
   }
-  async function shareEvents(events, targets, access) {
-    if (SC.local) {
+  function sharedEventValues(event) {
+    return {
+      title: event.title, start_at: event.start_at, end_at: event.end_at,
+      start_date: event.start_date, end_date: event.end_date, is_all_day: event.is_all_day,
+      timezone: event.timezone, memo: event.memo || '', status: 'active'
+    };
+  }
+  function findOwnedSharedEvent(rows, userId, event) {
+    return (rows || []).find(function (row) {
+      return row && row.owner_user_id === userId && row.source_kind === event.source_kind && row.source_ref === event.source_ref;
+    }) || null;
+  }
+  function duplicateRaceError(cause) {
+    var error = new Error('같은 일정이 동시에 공유되었습니다. 최신 공유 일정을 확인할 수 없어 저장을 마치지 못했습니다. 새로고침 후 다시 시도하세요.');
+    error.code = 'SHARED_EVENT_CONCURRENT_DUPLICATE';
+    error.cause = cause;
+    return error;
+  }
+  async function updateOwnedSharedEvent(db, userId, event, existing) {
+    var updated = await db.from('shared_events').update(sharedEventValues(event))
+      .eq('id', existing.id).eq('owner_user_id', userId)
+      .select(SHARED_EVENT_RETURN_COLUMNS).single();
+    if (updated.error) throw updated.error;
+    return updated.data;
+  }
+  async function saveSharedEventRow(db, userId, event, knownRows) {
+    var existing = findOwnedSharedEvent(knownRows, userId, event);
+    if (existing) return updateOwnedSharedEvent(db, userId, event, existing);
+
+    var inserted = await db.from('shared_events').insert(Object.assign({
+      owner_user_id: userId, source_kind: event.source_kind, source_ref: event.source_ref
+    }, sharedEventValues(event))).select(SHARED_EVENT_RETURN_COLUMNS).single();
+    if (!inserted.error) return inserted.data;
+    if (inserted.error.code !== '23505') throw inserted.error;
+
+    var refreshed = await db.rpc('get_shared_event_feed');
+    if (refreshed.error) throw duplicateRaceError(refreshed.error);
+    var racedRow = findOwnedSharedEvent(refreshed.data, userId, event);
+    if (!racedRow) throw duplicateRaceError(inserted.error);
+    return updateOwnedSharedEvent(db, userId, event, racedRow);
+  }
+  async function shareEvents(events, targets, access, context) {
+    var state = context || SC;
+    if (state.local) {
       var local = readLocal();
       events.forEach(function (event) {
         var saved = local.sharedEvents.find(function (item) { return item.source_kind === event.source_kind && item.source_ref === event.source_ref; });
-        if (!saved) { saved = Object.assign({ id: uid(), owner_user_id: SC.profile.user_id, event_shares: [] }, event); local.sharedEvents.push(saved); }
+        if (!saved) { saved = Object.assign({ id: uid(), owner_user_id: state.profile.user_id, event_shares: [] }, event); local.sharedEvents.push(saved); }
         targets.forEach(function (target) {
           var exists = (saved.event_shares || []).some(function (s) { return s.target_type === target.target_type && s.target_id === target.target_id; });
           if (!exists) (saved.event_shares || (saved.event_shares = [])).push({ target_type: target.target_type, target_id: target.target_id, access_level: access, status: 'active' });
@@ -423,19 +466,18 @@
       saveLocal({ sharedEvents: local.sharedEvents }); return;
     }
     for (var i = 0; i < events.length; i++) {
-      var event = events[i], upsert = await SC.client.from('shared_events').upsert({ owner_user_id: SC.user.id, source_kind: event.source_kind, source_ref: event.source_ref, title: event.title, start_at: event.start_at, end_at: event.end_at, start_date: event.start_date, end_date: event.end_date, is_all_day: event.is_all_day, timezone: event.timezone, memo: event.memo || '', status: 'active' }, { onConflict: 'owner_user_id,source_kind,source_ref' }).select('id,owner_user_id,source_kind,source_ref,start_at,end_at,start_date,end_date,is_all_day,timezone,status,version,created_at,updated_at').single();
-      if (upsert.error) throw upsert.error;
+      var event = events[i], savedRow = await saveSharedEventRow(state.client, state.user.id, event, state.sharedEvents);
       for (var j = 0; j < targets.length; j++) {
-        var target = targets[j], query = SC.client.from('event_shares').select('id').eq('event_id', upsert.data.id).eq('status', 'active');
+        var target = targets[j], query = state.client.from('event_shares').select('id').eq('event_id', savedRow.id).eq('status', 'active');
         query = target.target_type === 'group' ? query.eq('target_group_id', target.target_id) : query.eq('target_user_id', target.target_id);
         var current = await query.maybeSingle();
         if (current.error) throw current.error;
         if (current.data) {
-          var updated = await SC.client.from('event_shares').update({ access_level: access, status: 'active', suspended_reason: null, revoked_at: null }).eq('id', current.data.id);
+          var updated = await state.client.from('event_shares').update({ access_level: access, status: 'active', suspended_reason: null, revoked_at: null }).eq('id', current.data.id);
           if (updated.error) throw updated.error;
         } else {
-          var inserted = await SC.client.from('event_shares').insert({ event_id: upsert.data.id, target_type: target.target_type, target_user_id: target.target_type === 'user' ? target.target_id : null, target_group_id: target.target_type === 'group' ? target.target_id : null, access_level: access, created_by: SC.user.id });
-          if (inserted.error) throw inserted.error;
+          var insertedShare = await state.client.from('event_shares').insert({ event_id: savedRow.id, target_type: target.target_type, target_user_id: target.target_type === 'user' ? target.target_id : null, target_group_id: target.target_type === 'group' ? target.target_id : null, access_level: access, created_by: state.user.id });
+          if (insertedShare.error) throw insertedShare.error;
         }
       }
     }
@@ -446,19 +488,19 @@
     var memberRows = members.length ? members.map(function (member) {
       var controls = canManage && member.user_id !== group.owner_user_id ? `<button class='shared-secondary' onclick='SharedCalendar.updateMemberRole(&quot;${esc(group.id)}&quot;,&quot;${esc(member.user_id)}&quot;,&quot;${member.role === 'admin' ? 'member' : 'admin'}&quot;)'>${member.role === 'admin' ? '관리자 해제' : '관리자 지정'}</button><button class='shared-danger' onclick='SharedCalendar.removeMember(&quot;${esc(group.id)}&quot;,&quot;${esc(member.user_id)}&quot;)'>제거</button>` : '';
       return `<div class='shared-list-row'><span class='shared-avatar'>🙂</span><span><strong>${esc(member.nickname || member.user_id || '멤버')}</strong><small>${esc(member.role || 'member')}</small></span>${controls}</div>`;
-    }).join('') : '<div class=\'shared-empty\'>로그인 후 멤버 정보를 표시합니다.</div>';
-    return `<section class='shared-card'><div class='shared-card-heading'><div><button class='shared-link' onclick='SharedCalendar.showGroups()'>← 그룹 목록</button><h2>${esc(group.name)}</h2><p>${esc(group.description || '구성원과 필요한 일정만 공유하세요.')}</p></div><span class='shared-role'>${canManage ? '관리 권한' : '멤버'}</span></div><div class='shared-action-grid'><button class='shared-primary' onclick='SharedCalendar.openBulkShare(&quot;${esc(group.id)}&quot;)'>이 그룹에 일정 추가</button><button class='shared-secondary' onclick='SharedCalendar.openShareComposer(&quot;,&quot;${esc(group.id)}&quot;)'>내 일정 추가</button></div><div class='shared-subsection'><h3>그룹에 공유된 일정 <span>${shared.length}</span></h3>${shared.length ? shared.map(function (event) { var share = shareFor(event, 'group', group.id); return `<div class='shared-list-row'><span>📅</span><span><strong>${esc(sharedTitle(event, share))}</strong><small>${esc(eventDate(event))}${sharedMemo(event, share) ? ' · ' + esc(sharedMemo(event, share)) : ''}</small></span></div>`; }).join('') : '<div class=\'shared-empty\'>아직 공유된 일정이 없습니다.</div>'}</div><div class='shared-subsection'><h3>친구 초대</h3><div class='shared-inline-form'><input class='shared-input' id='sharedInviteCode-${esc(group.id)}' maxlength='8' placeholder='친구 코드 8자리'><button class='shared-secondary' onclick='SharedCalendar.inviteToGroup(&quot;${esc(group.id)}&quot;)'>초대</button></div><small class='shared-help'>지정한 친구에게만 초대가 전달됩니다.</small></div><div class='shared-subsection'><h3>멤버</h3><div class='shared-member-list'>${memberRows}</div></div></section>`;
+    }).join('') : `<div class='shared-empty'>로그인 후 멤버 정보를 표시합니다.</div>`;
+    return `<section class='shared-card'><div class='shared-card-heading'><div><button class='shared-link' onclick='SharedCalendar.showGroups()'>← 그룹 목록</button><h2>${esc(group.name)}</h2><p>${esc(group.description || '구성원과 필요한 일정만 공유하세요.')}</p></div><span class='shared-role'>${canManage ? '관리 권한' : '멤버'}</span></div><div class='shared-action-grid'><button class='shared-primary' onclick='SharedCalendar.openBulkShare(&quot;${esc(group.id)}&quot;)'>이 그룹에 일정 추가</button><button class='shared-secondary' onclick='SharedCalendar.openShareComposer(&quot;,&quot;${esc(group.id)}&quot;)'>내 일정 추가</button></div><div class='shared-subsection'><h3>그룹에 공유된 일정 <span>${shared.length}</span></h3>${shared.length ? shared.map(function (event) { var share = shareFor(event, 'group', group.id); return `<div class='shared-list-row'><span>📅</span><span><strong>${esc(sharedTitle(event, share))}</strong><small>${esc(eventDate(event))}${sharedMemo(event, share) ? ' · ' + esc(sharedMemo(event, share)) : ''}</small></span></div>`; }).join('') : `<div class='shared-empty'>아직 공유된 일정이 없습니다.</div>`}</div><div class='shared-subsection'><h3>친구 초대</h3><div class='shared-inline-form'><input class='shared-input' id='sharedInviteCode-${esc(group.id)}' maxlength='8' placeholder='친구 코드 8자리'><button class='shared-secondary' onclick='SharedCalendar.inviteToGroup(&quot;${esc(group.id)}&quot;)'>초대</button></div><small class='shared-help'>지정한 친구에게만 초대가 전달됩니다.</small></div><div class='shared-subsection'><h3>멤버</h3><div class='shared-member-list'>${memberRows}</div></div></section>`;
   }
   function renderGroups() {
     var selected = SC.groups.find(function (group) { return group.id === SC.selectedGroupId; });
     if (selected) return groupDetail(selected);
-    return `<section class='shared-card'><div class='shared-card-heading'><div><h2>그룹 캘린더</h2><p>가족·친구·모임별로 필요한 일정만 공유하세요.</p></div><span class='shared-count'>${SC.groups.length}개</span></div><div class='shared-create-box'><h3>새 그룹 만들기</h3><div class='shared-inline-form'><input class='shared-input' id='sharedGroupNameInput' maxlength='60' placeholder='예: 우리 가족'><button class='shared-primary' onclick='SharedCalendar.createGroup()'>그룹 만들기</button></div><input class='shared-input' id='sharedGroupDescriptionInput' maxlength='500' placeholder='그룹 설명 (선택)'></div><div class='shared-group-grid'>${SC.groups.length ? SC.groups.map(function (group) { return `<button class='shared-group-card' onclick='SharedCalendar.selectGroup(&quot;${esc(group.id)}&quot;)'><span class='shared-group-icon' style='background:${esc(group.color || '#6c8cff')}'>👥</span><span><strong>${esc(group.name)}</strong><small>${esc(group.description || '공유 일정 공간')}</small></span><span class='shared-group-arrow'>›</span></button>`; }).join('') : '<div class=\'shared-empty\'>첫 그룹을 만들어 일정을 공유해 보세요.</div>'}</div></section>`;
+    return `<section class='shared-card'><div class='shared-card-heading'><div><h2>그룹 캘린더</h2><p>가족·친구·모임별로 필요한 일정만 공유하세요.</p></div><span class='shared-count'>${SC.groups.length}개</span></div><div class='shared-create-box'><h3>새 그룹 만들기</h3><div class='shared-inline-form'><input class='shared-input' id='sharedGroupNameInput' maxlength='60' placeholder='예: 우리 가족'><button class='shared-primary' onclick='SharedCalendar.createGroup()'>그룹 만들기</button></div><input class='shared-input' id='sharedGroupDescriptionInput' maxlength='500' placeholder='그룹 설명 (선택)'></div><div class='shared-group-grid'>${SC.groups.length ? SC.groups.map(function (group) { return `<button class='shared-group-card' onclick='SharedCalendar.selectGroup(&quot;${esc(group.id)}&quot;)'><span class='shared-group-icon' style='background:${esc(group.color || '#6c8cff')}'>👥</span><span><strong>${esc(group.name)}</strong><small>${esc(group.description || '공유 일정 공간')}</small></span><span class='shared-group-arrow'>›</span></button>`; }).join('') : `<div class='shared-empty'>첫 그룹을 만들어 일정을 공유해 보세요.</div>`}</div></section>`;
   }
   function renderPeople() {
     var me = SC.profile && SC.profile.user_id, incoming = SC.requests.filter(function (r) { return r.receiver_id === me && r.status === 'pending'; }), outgoing = SC.requests.filter(function (r) { return r.sender_id === me && r.status === 'pending'; });
-    var friendRows = SC.friends.length ? SC.friends.map(function (f) { return `<div class='shared-list-row'><span class='shared-avatar'>🙂</span><span><strong>${esc(f.nickname)}</strong><small>${esc(f.friend_code || '')}</small></span></div>`; }).join('') : '<div class=\'shared-empty\'>아직 친구가 없습니다.</div>';
-    var requestRows = incoming.length ? incoming.map(function (r) { return `<div class='shared-list-row'><span>✉️</span><span><small>친구 요청</small></span><button class='shared-secondary' onclick='SharedCalendar.respondFriendRequest(&quot;${esc(r.id)}&quot;,&quot;accepted&quot;)'>수락</button><button class='shared-danger' onclick='SharedCalendar.respondFriendRequest(&quot;${esc(r.id)}&quot;,&quot;declined&quot;)'>거절</button></div>`; }).join('') : '<div class=\'shared-empty\'>새로운 요청이 없습니다.</div>';
-    var inviteRows = SC.invitations.length ? SC.invitations.map(function (i) { return `<div class='shared-list-row'><span>👥</span><span><strong>${esc(i.groups && i.groups.name || '그룹')}</strong><small>초대를 받았습니다</small></span><button class='shared-secondary' onclick='SharedCalendar.respondGroupInvite(&quot;${esc(i.id)}&quot;,&quot;accepted&quot;)'>가입</button><button class='shared-danger' onclick='SharedCalendar.respondGroupInvite(&quot;${esc(i.id)}&quot;,&quot;declined&quot;)'>거절</button></div>`; }).join('') : '<div class=\'shared-empty\'>새로운 그룹 초대가 없습니다.</div>';
+    var friendRows = SC.friends.length ? SC.friends.map(function (f) { return `<div class='shared-list-row'><span class='shared-avatar'>🙂</span><span><strong>${esc(f.nickname)}</strong><small>${esc(f.friend_code || '')}</small></span></div>`; }).join('') : `<div class='shared-empty'>아직 친구가 없습니다.</div>`;
+    var requestRows = incoming.length ? incoming.map(function (r) { return `<div class='shared-list-row'><span>✉️</span><span><small>친구 요청</small></span><button class='shared-secondary' onclick='SharedCalendar.respondFriendRequest(&quot;${esc(r.id)}&quot;,&quot;accepted&quot;)'>수락</button><button class='shared-danger' onclick='SharedCalendar.respondFriendRequest(&quot;${esc(r.id)}&quot;,&quot;declined&quot;)'>거절</button></div>`; }).join('') : `<div class='shared-empty'>새로운 요청이 없습니다.</div>`;
+    var inviteRows = SC.invitations.length ? SC.invitations.map(function (i) { return `<div class='shared-list-row'><span>👥</span><span><strong>${esc(i.groups && i.groups.name || '그룹')}</strong><small>초대를 받았습니다</small></span><button class='shared-secondary' onclick='SharedCalendar.respondGroupInvite(&quot;${esc(i.id)}&quot;,&quot;accepted&quot;)'>가입</button><button class='shared-danger' onclick='SharedCalendar.respondGroupInvite(&quot;${esc(i.id)}&quot;,&quot;declined&quot;)'>거절</button></div>`; }).join('') : `<div class='shared-empty'>새로운 그룹 초대가 없습니다.</div>`;
     return `<section class='shared-card'><div class='shared-card-heading'><div><h2>사람</h2><p>친구 연결만으로 일정이 공개되지는 않습니다.</p></div><span class='shared-code'>${esc(SC.profile && SC.profile.friend_code)}</span></div><div class='shared-profile-box'><label>내 닉네임</label><div class='shared-inline-form'><input class='shared-input' id='sharedNicknameInput' maxlength='20' value='${esc(SC.profile && SC.profile.nickname)}'><button class='shared-secondary' onclick='SharedCalendar.saveProfile()'>저장</button></div><small class='shared-help'>친구 코드를 공유해 초대할 수 있습니다.</small></div><div class='shared-profile-box'><h3>친구 추가</h3><div class='shared-inline-form'><input class='shared-input' id='sharedFriendCodeInput' maxlength='8' placeholder='친구 코드 8자리'><button class='shared-primary' onclick='SharedCalendar.sendFriendRequest()'>요청 보내기</button></div></div><div class='shared-subsection'><h3>친구 <span>${SC.friends.length}</span></h3>${friendRows}</div><div class='shared-subsection'><h3>받은 친구 요청</h3>${requestRows}</div><div class='shared-subsection'><h3>그룹 초대</h3>${inviteRows}</div><div class='shared-subsection'><h3>보낸 요청</h3><div class='shared-empty'>${outgoing.length ? '상대방의 수락을 기다리는 중입니다.' : '보낸 요청이 없습니다.'}</div></div></section>`;
   }
   function renderEvents() {
@@ -467,13 +509,13 @@
     var receivedHtml = received.map(function (event) { var share = shareFor(event, 'user', me); return `<div class='shared-list-row'><span>📥</span><span><strong>${esc(sharedTitle(event, share))}</strong><small>${esc(eventDate(event))}${sharedMemo(event, share) ? ' · ' + esc(sharedMemo(event, share)) : ''}</small></span></div>`; }).join('');
     var owned = SC.sharedEvents.filter(function (event) { return event.owner_user_id === me; });
     var ownedHtml = owned.map(function (event) { return `<div class='shared-list-row'><span>📅</span><span><strong>${esc(event.title)}</strong><small>${esc(eventDate(event))}</small></span><button class='shared-secondary' onclick='SharedCalendar.openShareComposer(&quot;${esc(event.source_ref || event.id)}&quot;)'>공유 관리</button></div>`; }).join('');
-    return `<section class='shared-card'><div class='shared-card-heading'><div><h2>공유 관리</h2><p>원본 일정은 내 캘린더에 남고 공유 연결만 관리합니다.</p></div><span class='shared-count'>${owned.length}개</span></div><div class='shared-subsection'><h3>나에게 공유된 일정</h3>${receivedHtml || '<div class=\'shared-empty\'>사람에게 직접 받은 일정이 없습니다.</div>'}</div><div class='shared-subsection'><h3>내가 공유한 일정</h3>${ownedHtml || '<div class=\'shared-empty\'>공유한 일정이 여기에 표시됩니다.</div>'}</div></section>`;
+    return `<section class='shared-card'><div class='shared-card-heading'><div><h2>공유 관리</h2><p>원본 일정은 내 캘린더에 남고 공유 연결만 관리합니다.</p></div><span class='shared-count'>${owned.length}개</span></div><div class='shared-subsection'><h3>나에게 공유된 일정</h3>${receivedHtml || `<div class='shared-empty'>사람에게 직접 받은 일정이 없습니다.</div>`}</div><div class='shared-subsection'><h3>내가 공유한 일정</h3>${ownedHtml || `<div class='shared-empty'>공유한 일정이 여기에 표시됩니다.</div>`}</div></section>`;
   }
   function render() {
     var center = document.getElementById('centerContent');
     if (!center || !window.Goalivo || Goalivo.state.currentPage !== 'shared') return;
     var localLabel = SC.local ? '로컬 미리보기' : (SC.profile && SC.profile.nickname || '사용자') + ' · 동기화됨';
-    center.innerHTML = `<div class='shared-calendar-page'><div class='shared-page-head'><div><span class='shared-eyebrow'>SHARED CALENDAR</span><h1>사람과 그룹으로 공유</h1><p>${esc(localLabel)} · 명시적으로 공유한 일정만 보입니다.</p></div><div class='shared-page-actions'><button class='shared-secondary' onclick='SharedCalendar.refresh()'>새로고침</button>${SC.local ? '<button class=\'shared-primary\' onclick=\'Goalivo.openModal(&quot;authModal&quot;)\'>로그인하고 실제 초대 연결</button>' : ''}</div></div><div class='shared-tabs'><button class='${SC.tab === 'groups' ? 'active' : ''}' onclick='SharedCalendar.setTab(&quot;groups&quot;)'>그룹</button><button class='${SC.tab === 'people' ? 'active' : ''}' onclick='SharedCalendar.setTab(&quot;people&quot;)'>사람</button><button class='${SC.tab === 'events' ? 'active' : ''}' onclick='SharedCalendar.setTab(&quot;events&quot;)'>공유 관리</button></div>${SC.tab === 'groups' ? renderGroups() : SC.tab === 'people' ? renderPeople() : renderEvents()}</div>`;
+    center.innerHTML = `<div class='shared-calendar-page'><div class='shared-page-head'><div><span class='shared-eyebrow'>SHARED CALENDAR</span><h1>사람과 그룹으로 공유</h1><p>${esc(localLabel)} · 명시적으로 공유한 일정만 보입니다.</p></div><div class='shared-page-actions'><button class='shared-secondary' onclick='SharedCalendar.refresh()'>새로고침</button>${SC.local ? `<button class='shared-primary' onclick='Goalivo.openModal(&quot;authModal&quot;)'>로그인하고 실제 초대 연결</button>` : ''}</div></div><div class='shared-tabs'><button class='${SC.tab === 'groups' ? 'active' : ''}' onclick='SharedCalendar.setTab(&quot;groups&quot;)'>그룹</button><button class='${SC.tab === 'people' ? 'active' : ''}' onclick='SharedCalendar.setTab(&quot;people&quot;)'>사람</button><button class='${SC.tab === 'events' ? 'active' : ''}' onclick='SharedCalendar.setTab(&quot;events&quot;)'>공유 관리</button></div>${SC.tab === 'groups' ? renderGroups() : SC.tab === 'people' ? renderPeople() : renderEvents()}</div>`;
   }
   function selectGroup(id) { SC.selectedGroupId = id; SC.tab = 'groups'; render(); }
   function showGroups() { SC.selectedGroupId = null; SC.tab = 'groups'; render(); }
@@ -486,7 +528,7 @@
     }
     var bottom = document.querySelector('.bottom-tabs-inner');
     if (bottom && !bottom.querySelector('[data-page=shared]')) {
-      var tab = document.createElement('button'); tab.className = 'bottom-tab shared-nav-btn'; tab.dataset.page = 'shared'; tab.innerHTML = '<span class=\'bottom-tab-icon\'>👥</span>공유'; tab.onclick = function () { openPage('groups'); }; bottom.appendChild(tab);
+      var tab = document.createElement('button'); tab.className = 'bottom-tab shared-nav-btn'; tab.dataset.page = 'shared'; tab.innerHTML = `<span class='bottom-tab-icon'>👥</span>공유`; tab.onclick = function () { openPage('groups'); }; bottom.appendChild(tab);
     }
   }
   async function openPage(tab) {
@@ -527,7 +569,7 @@
   }
   var api = { init: init, render: render, refresh: refresh, setTab: setTab, selectGroup: selectGroup, showGroups: showGroups, saveProfile: saveProfile, sendFriendRequest: sendFriendRequest, respondFriendRequest: respondFriendRequest, createGroup: createGroup, inviteToGroup: inviteToGroup, respondGroupInvite: respondGroupInvite, updateMemberRole: updateMemberRole, removeMember: removeMember, openBulkShare: openBulkShare, openShareComposer: openShareComposer, confirmShare: confirmShare, closeModal: closeShare, openSharedEventDetail: openSharedEventDetail };
   window.SharedCalendar = api;
-  if (typeof module !== 'undefined' && module.exports) module.exports = { sourceEvents: sourceEvents, sortEvents: sortEvents, chooseAnchor: chooseAnchor, modalHtml: modalHtml, eventDate: eventDate };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { sourceEvents: sourceEvents, sortEvents: sortEvents, chooseAnchor: chooseAnchor, modalHtml: modalHtml, eventDate: eventDate, shareEvents: shareEvents };
   var style = document.createElement('style');
   style.textContent = '.shared-hidden-panel{display:none!important}body.shared-page-active .center-panel{grid-column:1/-1}#rightPanelContent .shared-detail-share-action{margin:0 0 12px}#rightPanelContent .shared-detail-share-button{width:100%;min-height:44px;font-weight:700}.shared-calendar-page{max-width:1100px;margin:0 auto;padding:26px}.shared-page-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.shared-eyebrow{color:var(--c-accent);font-size:11px;letter-spacing:.14em;font-weight:800}.shared-page-head h1{margin:5px 0 4px;font-size:clamp(24px,4vw,36px)}.shared-page-head p,.shared-card p{color:var(--c-text-muted);margin:0;font-size:13px}.shared-page-actions,.shared-action-grid,.shared-inline-form,.shared-modal-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.shared-primary,.shared-secondary,.shared-danger,.shared-icon-btn{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit}.shared-primary{background:var(--c-accent);color:#fff}.shared-secondary{background:var(--c-surface-alt);color:var(--c-text);border:1px solid var(--c-border)}.shared-danger{background:rgba(220,38,38,.1);color:#dc2626}.shared-tabs{display:flex;gap:4px;border-bottom:1px solid var(--c-border);margin-bottom:16px}.shared-tabs button{background:none;border:0;padding:11px 16px;cursor:pointer;color:var(--c-text-muted);border-bottom:2px solid transparent}.shared-tabs button.active{color:var(--c-accent);border-color:var(--c-accent);font-weight:700}.shared-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:18px;padding:20px}.shared-card-heading{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:18px}.shared-card h2{margin:0 0 5px;font-size:21px}.shared-card h3{margin:0 0 10px;font-size:14px}.shared-count,.shared-code,.shared-role{background:var(--c-accent-bg);color:var(--c-accent);border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700;white-space:nowrap}.shared-code{letter-spacing:.12em}.shared-create-box,.shared-profile-box,.shared-access-box{background:var(--c-surface-alt);border-radius:14px;padding:14px;margin-bottom:18px}.shared-create-box h3{margin-bottom:10px}.shared-input{min-height:38px;min-width:0;flex:1;border:1px solid var(--c-border);border-radius:9px;padding:8px 10px;background:var(--c-surface);color:var(--c-text)}.shared-create-box>.shared-input{width:100%;margin-top:8px}.shared-group-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}.shared-group-card{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:center;text-align:left;border:1px solid var(--c-border);border-radius:14px;padding:13px;background:var(--c-surface);color:var(--c-text);cursor:pointer}.shared-group-icon{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:#fff}.shared-group-card strong,.shared-list-row strong{display:block}.shared-group-card small,.shared-list-row small{color:var(--c-text-muted);display:block;margin-top:3px;font-size:11px}.shared-group-arrow{color:var(--c-text-muted);font-size:22px}.shared-subsection{border-top:1px solid var(--c-border);padding-top:16px;margin-top:17px}.shared-subsection h3 span{color:var(--c-accent);margin-left:3px}.shared-list-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid color-mix(in srgb,var(--c-border) 55%,transparent)}.shared-list-row>span:nth-child(2){flex:1;min-width:0}.shared-avatar{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:var(--c-accent-bg)}.shared-member-list{display:flex;gap:6px;flex-wrap:wrap}.shared-help,.shared-access-box small{display:block;color:var(--c-text-muted);font-size:11px;margin-top:7px;line-height:1.45}.shared-empty{padding:22px 8px;text-align:center;color:var(--c-text-muted);font-size:13px}.shared-selection-tip{background:var(--c-accent-bg);color:var(--c-accent);padding:10px;border-radius:10px;font-size:12px;margin:10px 0}.shared-event-picker,.shared-share-targets{max-height:330px;overflow:auto;border:1px solid var(--c-border);border-radius:12px}.shared-event-row,.shared-target-row{display:flex;gap:9px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--c-border);cursor:pointer}.shared-event-row:last-child,.shared-target-row:last-child{border-bottom:0}.shared-event-row.selected{background:var(--c-accent-bg)}.shared-event-dot{width:8px;height:8px;border-radius:50%;background:var(--c-accent);flex:0 0 auto}.shared-event-main{flex:1;min-width:0}.shared-event-main small{display:block;color:var(--c-text-muted);margin-top:3px;font-size:11px}.shared-access-box{margin-top:12px}.shared-access-box label{display:block;font-weight:700;font-size:12px;margin-bottom:6px}.shared-modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:9999;display:grid;place-items:center;padding:16px}.shared-modal{width:min(720px,100%);max-height:min(88vh,760px);overflow:auto;background:var(--c-surface);color:var(--c-text);border-radius:18px;padding:20px;box-shadow:0 18px 60px rgba(15,23,42,.25)}.shared-icon-btn{background:transparent;color:var(--c-text-muted);font-size:24px;padding:2px 8px}.shared-link{border:0;background:none;color:var(--c-accent);cursor:pointer;padding:0 0 10px}@media(max-width:700px){.shared-calendar-page{padding:16px 12px}.shared-page-head{display:block}.shared-page-actions{margin-top:12px}.shared-page-actions button{flex:1}.shared-group-grid{grid-template-columns:1fr}.shared-card{padding:15px}.shared-modal{padding:15px}}';
   document.head.appendChild(style);
